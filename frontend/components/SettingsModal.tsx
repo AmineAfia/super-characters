@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Loader2, Check, ExternalLink, Settings, Link2 } from "lucide-react"
 import ComponentBrowser from "./ComponentBrowser"
+import { cn } from "@/lib/utils"
 
 interface SettingsModalProps {
   open: boolean
@@ -46,11 +47,9 @@ export default function SettingsModal({ open, onOpenChange, onConnectionChange }
       setGeminiApiKey(settings.geminiApiKey || "")
       setElevenLabsApiKey(settings.elevenLabsApiKey || "")
       setElevenLabsVoiceId(settings.elevenLabsVoiceId || "")
-      // Load silence duration separately (has default handling)
       const duration = await GetSilenceDurationMs()
       setSilenceDurationMs(duration || 300)
 
-      // Sync Gemini API key to localStorage for frontend agent
       if (settings.geminiApiKey) {
         const { setGeminiApiKey: setLocalStorageKey } = await import("@/lib/agent/config")
         setLocalStorageKey(settings.geminiApiKey)
@@ -69,13 +68,11 @@ export default function SettingsModal({ open, onOpenChange, onConnectionChange }
         "@/bindings/super-characters/app"
       )
 
-      // Save each setting to Go backend
       await SetGeminiAPIKey(geminiApiKey)
       await SetElevenLabsAPIKey(elevenLabsApiKey)
       await SetElevenLabsVoiceID(elevenLabsVoiceId)
       await SetSilenceDurationMs(silenceDurationMs)
 
-      // Also save Gemini API key to localStorage for frontend agent
       const { setGeminiApiKey: setLocalStorageKey } = await import("@/lib/agent/config")
       setLocalStorageKey(geminiApiKey)
 
@@ -106,17 +103,19 @@ export default function SettingsModal({ open, onOpenChange, onConnectionChange }
           </DialogDescription>
         </DialogHeader>
 
-        {/* Tab Navigation */}
-        <div className="flex border-b border-border -mx-6 px-6">
+        {/* Tab Navigation - Liquid Glass segmented control */}
+        <div className="flex p-1 rounded-xl bg-muted/50 -mx-2">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              className={cn(
+                "flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg",
+                "transition-all duration-200 ease-apple",
                 activeTab === tab.id
-                  ? "border-primary text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}
+                  ? "bg-card text-foreground shadow-glass-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
             >
               <tab.icon className="h-4 w-4" />
               {tab.label}
@@ -125,9 +124,9 @@ export default function SettingsModal({ open, onOpenChange, onConnectionChange }
         </div>
 
         {/* Tab Content */}
-        <div className="flex-1 overflow-y-auto py-4 -mx-6 px-6">
+        <div className="flex-1 overflow-y-auto py-4 glass-scrollbar">
           {activeTab === "general" && (
-            <div className="grid gap-4">
+            <div className="grid gap-5">
               {/* Gemini API Key */}
               <div className="grid gap-2">
                 <div className="flex items-center justify-between">
@@ -136,7 +135,7 @@ export default function SettingsModal({ open, onOpenChange, onConnectionChange }
                     href="https://aistudio.google.com/apikey"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                    className="text-xs text-primary hover:text-primary/80 flex items-center gap-1 transition-colors"
                   >
                     Get API Key <ExternalLink className="h-3 w-3" />
                   </a>
@@ -161,7 +160,7 @@ export default function SettingsModal({ open, onOpenChange, onConnectionChange }
                     href="https://elevenlabs.io/app/settings/api-keys"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                    className="text-xs text-primary hover:text-primary/80 flex items-center gap-1 transition-colors"
                   >
                     Get API Key <ExternalLink className="h-3 w-3" />
                   </a>
@@ -186,7 +185,7 @@ export default function SettingsModal({ open, onOpenChange, onConnectionChange }
                     href="https://elevenlabs.io/app/voice-library"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                    className="text-xs text-primary hover:text-primary/80 flex items-center gap-1 transition-colors"
                   >
                     Browse Voices <ExternalLink className="h-3 w-3" />
                   </a>
@@ -204,10 +203,10 @@ export default function SettingsModal({ open, onOpenChange, onConnectionChange }
               </div>
 
               {/* Silence Duration */}
-              <div className="grid gap-2">
+              <div className="grid gap-3">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="silence-duration">Silence Duration</Label>
-                  <span className="text-xs text-muted-foreground">{silenceDurationMs}ms</span>
+                  <span className="text-xs font-medium text-foreground px-2 py-1 rounded-md bg-muted/60">{silenceDurationMs}ms</span>
                 </div>
                 <Input
                   id="silence-duration"
@@ -217,7 +216,6 @@ export default function SettingsModal({ open, onOpenChange, onConnectionChange }
                   step="50"
                   value={silenceDurationMs}
                   onChange={(e) => setSilenceDurationMs(parseInt(e.target.value))}
-                  className="cursor-pointer"
                 />
                 <p className="text-xs text-muted-foreground">
                   How long to wait after you stop speaking before processing (100-1000ms)
@@ -233,7 +231,7 @@ export default function SettingsModal({ open, onOpenChange, onConnectionChange }
 
         {/* Footer - only show for general tab */}
         {activeTab === "general" && (
-          <DialogFooter className="border-t border-border pt-4 -mx-6 px-6">
+          <DialogFooter>
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>

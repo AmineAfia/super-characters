@@ -25,6 +25,7 @@ import {
   type ConnectedAccount,
   POPULAR_APPS,
 } from "@/lib/pipedream/client"
+import { cn } from "@/lib/utils"
 
 interface ComponentBrowserProps {
   onConnectionChange?: () => void
@@ -46,7 +47,6 @@ export default function ComponentBrowser({ onConnectionChange }: ComponentBrowse
   const [isSavingCredentials, setIsSavingCredentials] = useState(false)
   const [credentialsError, setCredentialsError] = useState("")
 
-  // Check if configured on mount
   useEffect(() => {
     checkConfiguration()
   }, [])
@@ -118,11 +118,7 @@ export default function ComponentBrowser({ onConnectionChange }: ComponentBrowse
   const handleConnect = async (appSlug: string) => {
     setConnectingApp(appSlug)
     try {
-      const success = await connectApp(appSlug)
-      if (success) {
-        // Show a message that OAuth flow is opening
-        // User needs to complete in browser and then refresh
-      }
+      await connectApp(appSlug)
     } catch (e) {
       console.error("Error connecting app:", e)
     } finally {
@@ -160,15 +156,15 @@ export default function ComponentBrowser({ onConnectionChange }: ComponentBrowse
     return connectedAccounts.find(a => a.app.name_slug === appSlug)
   }
 
-  // Show credentials form if not configured
+  // Credentials form - not configured state
   if (!isConfigured) {
     return (
-      <div className="space-y-4">
-        <div className="text-sm text-muted-foreground mb-4">
+      <div className="space-y-5">
+        <div className="text-sm text-muted-foreground">
           Configure Pipedream Connect to enable 3000+ app integrations for your AI agent.
         </div>
 
-        <div className="grid gap-3">
+        <div className="grid gap-4">
           <div className="grid gap-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="pd-client-id">Client ID</Label>
@@ -176,7 +172,7 @@ export default function ComponentBrowser({ onConnectionChange }: ComponentBrowse
                 href="https://pipedream.com/settings/api"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                className="text-xs text-primary hover:text-primary/80 flex items-center gap-1 transition-colors"
               >
                 Get credentials <ExternalLink className="h-3 w-3" />
               </a>
@@ -208,7 +204,7 @@ export default function ComponentBrowser({ onConnectionChange }: ComponentBrowse
                 href="https://pipedream.com/projects"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                className="text-xs text-primary hover:text-primary/80 flex items-center gap-1 transition-colors"
               >
                 Get project ID <ExternalLink className="h-3 w-3" />
               </a>
@@ -223,13 +219,13 @@ export default function ComponentBrowser({ onConnectionChange }: ComponentBrowse
           </div>
 
           {credentialsError && (
-            <div className="text-sm text-red-400 flex items-center gap-2">
+            <div className="text-sm text-destructive flex items-center gap-2 p-3 rounded-xl status-indicator-error">
               <AlertCircle className="h-4 w-4" />
               {credentialsError}
             </div>
           )}
 
-          <Button onClick={handleSaveCredentials} disabled={isSavingCredentials} className="mt-2">
+          <Button onClick={handleSaveCredentials} disabled={isSavingCredentials} className="mt-1">
             {isSavingCredentials ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -244,10 +240,10 @@ export default function ComponentBrowser({ onConnectionChange }: ComponentBrowse
     )
   }
 
-  // Show loading state
+  // Loading state
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-8">
+      <div className="flex items-center justify-center py-12">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     )
@@ -257,30 +253,32 @@ export default function ComponentBrowser({ onConnectionChange }: ComponentBrowse
   const connectedSection = connectedAccounts.length > 0 && (
     <div className="mb-6">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-medium">Connected Apps</h3>
-        <Button variant="ghost" size="sm" onClick={handleRefresh} disabled={isLoading}>
-          <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+        <h3 className="text-sm font-semibold text-foreground">Connected Apps</h3>
+        <Button variant="ghost" size="icon-sm" onClick={handleRefresh} disabled={isLoading}>
+          <RefreshCw className={cn("h-4 w-4", isLoading && 'animate-spin')} />
         </Button>
       </div>
       <div className="grid gap-2">
         {connectedAccounts.map((account) => (
           <div
             key={account.id}
-            className="flex items-center justify-between p-3 rounded-lg bg-green-500/10 border border-green-500/20"
+            className="flex items-center justify-between p-3 rounded-xl glass-card border-system-green/20"
           >
             <div className="flex items-center gap-3">
-              <CheckCircle2 className="h-4 w-4 text-green-500" />
+              <div className="p-1.5 rounded-lg bg-system-green/15">
+                <CheckCircle2 className="h-4 w-4 text-system-green" />
+              </div>
               <div>
-                <div className="text-sm font-medium">{account.app.name || account.name}</div>
+                <div className="text-sm font-medium text-card-foreground">{account.app.name || account.name}</div>
                 <div className="text-xs text-muted-foreground">{account.app.name_slug}</div>
               </div>
             </div>
             <Button
               variant="ghost"
-              size="sm"
+              size="icon-sm"
               onClick={() => handleDisconnect(account.id)}
               disabled={disconnectingAccount === account.id}
-              className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+              className="text-destructive hover:text-destructive hover:bg-destructive/10"
             >
               {disconnectingAccount === account.id ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -300,27 +298,27 @@ export default function ComponentBrowser({ onConnectionChange }: ComponentBrowse
     : apps.filter(app => POPULAR_APPS.includes(app.name_slug)).slice(0, 15)
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       {connectedSection}
 
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-medium">Available Apps</h3>
-          <span className="text-xs text-muted-foreground">3000+ integrations</span>
+          <h3 className="text-sm font-semibold text-foreground">Available Apps</h3>
+          <span className="text-xs text-muted-foreground px-2 py-1 rounded-md bg-muted/50">3000+ integrations</span>
         </div>
 
-        <div className="relative mb-3">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <div className="relative mb-4">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             type="text"
             placeholder="Search apps..."
             value={searchQuery}
             onChange={(e) => handleSearch(e.target.value)}
-            className="pl-9"
+            className="pl-10"
           />
         </div>
 
-        <div className="grid gap-2 max-h-[300px] overflow-y-auto pr-1">
+        <div className="grid gap-2 max-h-[300px] overflow-y-auto pr-1 glass-scrollbar">
           {filteredApps.map((app) => {
             const connected = isAppConnected(app.name_slug)
             const account = getConnectedAccountForApp(app.name_slug)
@@ -328,30 +326,31 @@ export default function ComponentBrowser({ onConnectionChange }: ComponentBrowse
             return (
               <div
                 key={app.id}
-                className={`flex items-center justify-between p-3 rounded-lg border ${
+                className={cn(
+                  "flex items-center justify-between p-3 rounded-xl transition-all duration-200",
                   connected
-                    ? "bg-green-500/10 border-green-500/20"
-                    : "bg-card border-border hover:border-primary/50"
-                }`}
+                    ? "glass-card border-system-green/20"
+                    : "glass-card hover:shadow-glass"
+                )}
               >
                 <div className="flex items-center gap-3">
                   {app.img_src ? (
                     <img
                       src={app.img_src}
                       alt={app.name}
-                      className="h-8 w-8 rounded"
+                      className="h-9 w-9 rounded-lg shadow-glass-sm"
                       onError={(e) => {
                         (e.target as HTMLImageElement).style.display = 'none'
                       }}
                     />
                   ) : (
-                    <div className="h-8 w-8 rounded bg-primary/10 flex items-center justify-center">
+                    <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shadow-glass-sm">
                       <Link2 className="h-4 w-4 text-primary" />
                     </div>
                   )}
                   <div>
-                    <div className="text-sm font-medium">{app.name}</div>
-                    <div className="text-xs text-muted-foreground truncate max-w-[200px]">
+                    <div className="text-sm font-medium text-card-foreground">{app.name}</div>
+                    <div className="text-xs text-muted-foreground truncate max-w-[180px]">
                       {app.description || app.name_slug}
                     </div>
                   </div>
@@ -359,13 +358,13 @@ export default function ComponentBrowser({ onConnectionChange }: ComponentBrowse
 
                 {connected ? (
                   <div className="flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                    <CheckCircle2 className="h-4 w-4 text-system-green" />
                     <Button
                       variant="ghost"
-                      size="sm"
+                      size="icon-sm"
                       onClick={() => account && handleDisconnect(account.id)}
                       disabled={disconnectingAccount === account?.id}
-                      className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
                     >
                       {disconnectingAccount === account?.id ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -385,7 +384,7 @@ export default function ComponentBrowser({ onConnectionChange }: ComponentBrowse
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       <>
-                        <Link2 className="h-4 w-4 mr-1" />
+                        <Link2 className="h-4 w-4 mr-1.5" />
                         Connect
                       </>
                     )}
@@ -396,13 +395,13 @@ export default function ComponentBrowser({ onConnectionChange }: ComponentBrowse
           })}
 
           {filteredApps.length === 0 && (
-            <div className="text-center py-8 text-muted-foreground">
+            <div className="text-center py-12 text-muted-foreground">
               {searchQuery ? "No apps found" : "No apps available"}
             </div>
           )}
         </div>
 
-        <p className="text-xs text-muted-foreground mt-3">
+        <p className="text-xs text-muted-foreground mt-4">
           After connecting, click refresh to update the list. Connected apps will be available as tools for the AI agent.
         </p>
       </div>

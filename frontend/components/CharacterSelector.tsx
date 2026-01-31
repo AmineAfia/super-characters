@@ -11,8 +11,8 @@ import { cn } from "@/lib/utils"
 const AvatarPreview3D = dynamic(() => import("@/components/AvatarPreview3D"), {
   ssr: false,
   loading: () => (
-    <div className="w-full h-full flex items-center justify-center bg-muted/30 animate-pulse rounded-2xl">
-      <div className="w-16 h-16 rounded-full bg-muted/50" />
+    <div className="w-full h-full flex items-center justify-center bg-muted/20 animate-pulse rounded-2xl">
+      <div className="w-16 h-16 rounded-full bg-muted/30" />
     </div>
   ),
 })
@@ -24,7 +24,6 @@ function getAvatarThumbnail(glbUrl: string): string {
 }
 
 // Ready Player Me render API URL for portrait renders
-// Using the simple .png endpoint which returns a clean portrait render
 const getRenderUrl = (avatarId: string) => 
   `https://models.readyplayer.me/${avatarId}.png`
 
@@ -33,16 +32,15 @@ const getGlbUrl = (avatarId: string) =>
   `https://models.readyplayer.me/${avatarId}.glb?morphTargets=ARKit,Oculus+Visemes,mouthOpen,mouthSmile,eyesClosed,eyesLookUp,eyesLookDown&textureSizeLimit=1024&textureFormat=png`
 
 // Valid Ready Player Me avatar IDs (these are public demo avatars)
-// Note: Replace with your own avatar IDs from readyplayer.me
 const AVATAR_IDS = {
-  luna: "64bfa15f0e72c63d7c3934a6",    // Female, dark hair, glasses
-  atlas: "64bfa15f0e72c63d7c3934a6",   // Using Luna as fallback (create your own avatar at readyplayer.me)
-  nova: "64bfa15f0e72c63d7c3934a6",    // Using Luna as fallback
-  echo: "64bfa15f0e72c63d7c3934a6",    // Using Luna as fallback
-  pixel: "64bfa15f0e72c63d7c3934a6",   // Using Luna as fallback
+  luna: "64bfa15f0e72c63d7c3934a6",
+  atlas: "64bfa15f0e72c63d7c3934a6",
+  nova: "64bfa15f0e72c63d7c3934a6",
+  echo: "64bfa15f0e72c63d7c3934a6",
+  pixel: "64bfa15f0e72c63d7c3934a6",
 }
 
-// Sample characters data - in a real app, this would come from settings/backend
+// Sample characters data with Apple system colors
 const defaultCharacters: Character[] = [
   {
     id: "luna",
@@ -52,8 +50,8 @@ const defaultCharacters: Character[] = [
     model: "Gemini Pro",
     avatarUrl: getGlbUrl(AVATAR_IDS.luna),
     thumbnailUrl: getRenderUrl(AVATAR_IDS.luna),
-    description: "A gentle and thoughtful companion who excels at creative conversations and storytelling. Luna's dreamy personality makes her perfect for brainstorming and imaginative discussions.",
-    color: "#F5A897",
+    description: "A gentle and thoughtful companion who excels at creative conversations and storytelling.",
+    color: "#FF9F7F", // Warm peach
   },
   {
     id: "atlas",
@@ -63,8 +61,8 @@ const defaultCharacters: Character[] = [
     model: "GPT-4",
     avatarUrl: getGlbUrl(AVATAR_IDS.atlas),
     thumbnailUrl: getRenderUrl(AVATAR_IDS.atlas),
-    description: "A wise and analytical assistant focused on research and detailed explanations. Atlas helps you navigate complex topics with clarity and precision.",
-    color: "#B8D4E8",
+    description: "A wise and analytical assistant focused on research and detailed explanations.",
+    color: "#5AC8FA", // System teal
   },
   {
     id: "nova",
@@ -74,8 +72,8 @@ const defaultCharacters: Character[] = [
     model: "Claude 3",
     avatarUrl: getGlbUrl(AVATAR_IDS.nova),
     thumbnailUrl: getRenderUrl(AVATAR_IDS.nova),
-    description: "An enthusiastic and energetic companion who brings positivity to every conversation. Nova is great for motivation, brainstorming, and uplifting chats.",
-    color: "#A8E6CF",
+    description: "An enthusiastic and energetic companion who brings positivity to every conversation.",
+    color: "#30D158", // System green
   },
   {
     id: "echo",
@@ -85,8 +83,8 @@ const defaultCharacters: Character[] = [
     model: "Gemini Pro",
     avatarUrl: getGlbUrl(AVATAR_IDS.echo),
     thumbnailUrl: getRenderUrl(AVATAR_IDS.echo),
-    description: "A calm and composed assistant who specializes in thoughtful responses. Echo is ideal for deep conversations and mindful discussions.",
-    color: "#E8E4EE",
+    description: "A calm and composed assistant who specializes in thoughtful responses.",
+    color: "#BF5AF2", // System purple
   },
   {
     id: "pixel",
@@ -96,8 +94,8 @@ const defaultCharacters: Character[] = [
     model: "GPT-4",
     avatarUrl: getGlbUrl(AVATAR_IDS.pixel),
     thumbnailUrl: getRenderUrl(AVATAR_IDS.pixel),
-    description: "A tech-savvy companion who loves helping with coding, debugging, and all things technical. Pixel makes complex tech topics accessible and fun.",
-    color: "#7AB0D4",
+    description: "A tech-savvy companion who loves helping with coding, debugging, and all things technical.",
+    color: "#007AFF", // System blue
   },
 ]
 
@@ -151,37 +149,45 @@ export default function CharacterSelector({
 
   return (
     <div className="flex flex-col h-full bg-background relative overflow-hidden">
-      {/* Decorative bubbles */}
+      {/* Ambient liquid glass orbs */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="bubble bubble-lg top-20 left-10" style={{ animationDelay: '0s' }} />
-        <div className="bubble bubble-md top-40 right-16" style={{ animationDelay: '2s' }} />
-        <div className="bubble bubble-sm bottom-32 left-24" style={{ animationDelay: '4s' }} />
-        <div className="bubble bubble-md bottom-20 right-32" style={{ animationDelay: '1s' }} />
+        <div className="bubble bubble-lg top-16 left-8" style={{ animationDelay: '0s' }} />
+        <div className="bubble bubble-md top-32 right-12" style={{ animationDelay: '2s' }} />
+        <div className="bubble bubble-sm bottom-40 left-20" style={{ animationDelay: '4s' }} />
+        <div className="bubble bubble-md bottom-24 right-24" style={{ animationDelay: '1s' }} />
+        <div className="bubble bubble-sm top-48 left-1/3" style={{ animationDelay: '3s' }} />
       </div>
 
-      {/* Soft radial gradient background */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(184,212,232,0.15)_0%,transparent_50%)]" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,rgba(245,168,151,0.1)_0%,transparent_50%)]" />
+      {/* Soft ambient gradient backgrounds */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_80%_-20%,rgba(0,122,255,0.08),transparent_60%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_20%_100%,rgba(90,200,250,0.06),transparent_50%)]" />
 
-      {/* Header */}
-      <div className="flex-shrink-0 p-6 pb-4 border-b border-border/30 glass relative z-10">
-        <div className="flex items-center justify-between max-w-4xl mx-auto w-full">
-          <div className="flex items-center gap-4">
-            <div className="relative">
-              <img 
-                src="/logo.png" 
-                alt="Super Characters" 
-                className="h-12 w-12 rounded-2xl shadow-soft hover:shadow-soft-lg transition-shadow duration-300" 
-              />
-              <div className="absolute -inset-1 rounded-2xl bg-primary/20 blur-md -z-10" />
-            </div>
-            <div className="space-y-1">
-              <h1 className="text-xl font-bold tracking-tight text-foreground">
-                Choose Your Character
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                Select a companion to start chatting
-              </p>
+      {/* Header - Liquid Glass style */}
+      <div className="flex-shrink-0 relative z-10">
+        <div className="glass border-b border-glass-border">
+          <div className="p-5 pb-4">
+            <div className="flex items-center justify-between max-w-4xl mx-auto w-full">
+              <div className="flex items-center gap-4">
+                <div className="relative">
+                  <div className="h-11 w-11 rounded-2xl shadow-glass overflow-hidden bg-card">
+                    <img 
+                      src="/logo.png" 
+                      alt="Super Characters" 
+                      className="w-full h-full object-cover" 
+                    />
+                  </div>
+                  {/* Glow behind logo */}
+                  <div className="absolute -inset-2 rounded-2xl bg-primary/10 blur-xl -z-10" />
+                </div>
+                <div className="space-y-0.5">
+                  <h1 className="text-lg font-semibold tracking-tight text-foreground">
+                    Choose Your Character
+                  </h1>
+                  <p className="text-sm text-muted-foreground">
+                    Select a companion to start chatting
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -192,13 +198,13 @@ export default function CharacterSelector({
         {/* Character Cards Carousel */}
         <div className="lg:w-1/2 flex flex-col p-6">
           <div className="relative flex-1 flex items-center">
-            {/* Scroll buttons */}
+            {/* Scroll buttons - Liquid Glass style */}
             {canScrollLeft && (
               <Button
-                variant="ghost"
+                variant="glass"
                 size="icon"
                 onClick={() => scroll('left')}
-                className="absolute left-0 z-20 h-10 w-10 rounded-full bg-card/80 backdrop-blur-sm shadow-soft hover:bg-card"
+                className="absolute left-0 z-20 h-10 w-10 rounded-full"
               >
                 <ChevronLeft className="h-5 w-5" />
               </Button>
@@ -206,10 +212,10 @@ export default function CharacterSelector({
             
             {canScrollRight && (
               <Button
-                variant="ghost"
+                variant="glass"
                 size="icon"
                 onClick={() => scroll('right')}
-                className="absolute right-0 z-20 h-10 w-10 rounded-full bg-card/80 backdrop-blur-sm shadow-soft hover:bg-card"
+                className="absolute right-0 z-20 h-10 w-10 rounded-full"
               >
                 <ChevronRight className="h-5 w-5" />
               </Button>
@@ -218,7 +224,7 @@ export default function CharacterSelector({
             {/* Cards container */}
             <div 
               ref={scrollRef}
-              className="flex gap-4 overflow-x-auto no-visible-scrollbar px-8 py-4 scroll-smooth scroll-fade-edges"
+              className="flex gap-4 overflow-x-auto no-visible-scrollbar px-10 py-4 scroll-smooth scroll-fade-edges"
             >
               {characters.map((character) => (
                 <CharacterCard
@@ -231,17 +237,17 @@ export default function CharacterSelector({
             </div>
           </div>
 
-          {/* Dots indicator */}
+          {/* Dots indicator - pill style */}
           <div className="flex justify-center gap-2 py-4">
             {characters.map((character) => (
               <button
                 key={character.id}
                 onClick={() => handleSelect(character)}
                 className={cn(
-                  "w-2 h-2 rounded-full transition-all duration-300",
+                  "h-2 rounded-full transition-all duration-300 ease-apple",
                   selectedId === character.id
-                    ? "bg-primary w-6"
-                    : "bg-muted-foreground/30 hover:bg-muted-foreground/50"
+                    ? "w-6 bg-primary"
+                    : "w-2 bg-muted-foreground/25 hover:bg-muted-foreground/40"
                 )}
               />
             ))}
@@ -250,15 +256,15 @@ export default function CharacterSelector({
 
         {/* Character Preview */}
         <div className="lg:w-1/2 flex flex-col border-t lg:border-t-0 lg:border-l border-border/30 relative">
-          {/* 3D Avatar Preview - fills the space above character details */}
+          {/* 3D Avatar Preview */}
           <div className="flex-1 relative min-h-[300px]">
-            {/* Subtle spotlight glow at the bottom */}
+            {/* Spotlight glow effect */}
             <div 
-              className="absolute bottom-0 left-1/2 -translate-x-1/2 w-64 h-32 rounded-full blur-3xl opacity-30 pointer-events-none"
+              className="absolute bottom-0 left-1/2 -translate-x-1/2 w-72 h-36 rounded-full blur-3xl opacity-25 pointer-events-none transition-colors duration-500"
               style={{ backgroundColor: selectedCharacter.color }}
             />
             
-            {/* 3D Avatar Canvas - no border, seamless */}
+            {/* 3D Avatar Canvas */}
             <div className="absolute inset-0">
               <AvatarPreview3D
                 key={selectedCharacter.id}
@@ -269,28 +275,33 @@ export default function CharacterSelector({
             </div>
           </div>
 
-          {/* Character details - fixed at bottom */}
+          {/* Character details - Glass panel */}
           <div className="flex-shrink-0 p-6 pt-0">
-            <div className="text-center space-y-2 max-w-sm mx-auto">
-              <h2 className="text-2xl font-bold text-foreground">
+            <div className="text-center space-y-1.5 max-w-sm mx-auto">
+              <h2 className="text-2xl font-bold text-foreground tracking-tight">
                 {selectedCharacter.name}
               </h2>
               <p 
-                className="text-sm font-medium uppercase tracking-wider"
+                className="text-sm font-semibold uppercase tracking-widest"
                 style={{ color: selectedCharacter.color }}
               >
                 {selectedCharacter.subtitle}
               </p>
             </div>
 
-            {/* Select button */}
-            <div className="flex justify-center mt-4">
+            {/* Select button - Liquid Glass with character color */}
+            <div className="flex justify-center mt-5">
               <Button 
                 size="lg"
-                className="px-8 rounded-2xl shadow-glow hover:shadow-glow-lg transition-all duration-300"
+                className={cn(
+                  "px-8 rounded-2xl",
+                  "shadow-glass hover:shadow-glass-lg",
+                  "transition-all duration-300 ease-apple",
+                  "hover:-translate-y-0.5"
+                )}
                 style={{ 
                   backgroundColor: selectedCharacter.color,
-                  color: '#fff'
+                  color: '#FFFFFF'
                 }}
                 onClick={() => onSelect(selectedCharacter)}
               >
