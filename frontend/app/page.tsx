@@ -149,26 +149,34 @@ export default function Home() {
   const isCurrentlyRecording = isConversationActive ? isListening : isRecording;
 
   return (
-    <div className="flex flex-col h-full bg-background">
+    <div className="flex flex-col h-full bg-background relative overflow-hidden">
+      {/* Decorative bubbles */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div className="bubble bubble-lg top-20 left-10" style={{ animationDelay: '0s' }} />
+        <div className="bubble bubble-md top-40 right-16" style={{ animationDelay: '2s' }} />
+        <div className="bubble bubble-sm bottom-32 left-24" style={{ animationDelay: '4s' }} />
+        <div className="bubble bubble-md bottom-20 right-32" style={{ animationDelay: '1s' }} />
+      </div>
+
       {/* Permission Warnings */}
-      <div className="flex flex-col">
+      <div className="flex flex-col relative z-10">
         {hasAccessibility === false && (
-          <div className="flex-shrink-0 p-4 bg-amber-500/10 border-b border-amber-500/20">
+          <div className="flex-shrink-0 p-4 bg-gold/30 border-b border-gold/40 backdrop-blur-sm">
             <div className="flex items-center gap-3 max-w-3xl mx-auto">
-              <ShieldAlert className="h-5 w-5 text-amber-500 flex-shrink-0" />
+              <ShieldAlert className="h-5 w-5 text-foreground/70 flex-shrink-0" />
               <div className="flex-1">
-                <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
+                <p className="text-sm font-semibold text-foreground">
                   Accessibility permission required
                 </p>
-                <p className="text-xs text-amber-600/80 dark:text-amber-500/80">
-                  Grant permission to enable global hotkey (⌃⌥⌘)
+                <p className="text-xs text-muted-foreground">
+                  Grant permission to enable global hotkey (Cmd+Shift+Space)
                 </p>
               </div>
               <Button 
                 size="sm" 
                 variant="outline" 
                 onClick={openAccessibilitySettings}
-                className="border-amber-500/50 text-amber-700 dark:text-amber-400 hover:bg-amber-500/10"
+                className="border-primary/50 text-foreground hover:bg-primary/10"
               >
                 Open Settings
               </Button>
@@ -177,14 +185,14 @@ export default function Home() {
         )}
 
         {micPermission === "denied" && (
-          <div className="flex-shrink-0 p-4 bg-red-500/10 border-b border-red-500/20">
+          <div className="flex-shrink-0 p-4 bg-rose/30 border-b border-rose/40 backdrop-blur-sm">
             <div className="flex items-center gap-3 max-w-3xl mx-auto">
-              <Mic className="h-5 w-5 text-red-500 flex-shrink-0" />
+              <Mic className="h-5 w-5 text-destructive flex-shrink-0" />
               <div className="flex-1">
-                <p className="text-sm font-medium text-red-700 dark:text-red-400">
+                <p className="text-sm font-semibold text-foreground">
                   Microphone permission denied
                 </p>
-                <p className="text-xs text-red-600/80 dark:text-red-500/80">
+                <p className="text-xs text-muted-foreground">
                   Grant permission to enable voice transcription
                 </p>
               </div>
@@ -192,7 +200,7 @@ export default function Home() {
                 size="sm" 
                 variant="outline" 
                 onClick={openMicSettings}
-                className="border-red-500/50 text-red-700 dark:text-red-400 hover:bg-red-500/10"
+                className="border-destructive/50 text-foreground hover:bg-destructive/10"
               >
                 Open Settings
               </Button>
@@ -202,19 +210,23 @@ export default function Home() {
       </div>
 
       {/* Header */}
-      <div className="flex-shrink-0 p-6 pb-4 border-b border-border/50">
+      <div className="flex-shrink-0 p-6 pb-4 border-b border-border/30 glass relative z-10">
         <div className="flex items-center justify-between max-w-3xl mx-auto w-full">
-          <div className="flex items-center gap-3">
-            <img src="/logo.png" alt="Super Characters" className="h-10 w-10 rounded-lg" />
+          <div className="flex items-center gap-4">
+            <div className="relative">
+              <img 
+                src="/logo.png" 
+                alt="Super Characters" 
+                className="h-12 w-12 rounded-2xl shadow-soft hover:shadow-soft-lg transition-shadow duration-300" 
+              />
+              <div className="absolute -inset-1 rounded-2xl bg-primary/20 blur-md -z-10" />
+            </div>
             <div className="space-y-1">
-              <h1 className="text-xl font-medium tracking-tight">
+              <h1 className="text-xl font-bold tracking-tight text-foreground">
                 Super Characters
               </h1>
               <p className="text-sm text-muted-foreground">
-                {isConversationActive 
-                  ? "Voice chat mode active - press hotkey to speak"
-                  : <>Hold <kbd className="px-1.5 py-0.5 text-xs rounded bg-muted font-mono">⌘+Shift+Space</kbd> to dictate</>
-                }
+                Hold <kbd className="px-2 py-1 text-xs rounded-lg bg-muted/80 font-mono text-foreground/80 border border-border/50">Cmd+Shift+Space</kbd> to dictate
               </p>
             </div>
           </div>
@@ -224,21 +236,21 @@ export default function Home() {
             {(isConversationActive ? conversation.length > 0 : messages.length > 0) && (
               <Button
                 variant="ghost"
-                size="sm"
-                onClick={isConversationActive ? clearConversation : clearMessages}
-                className="text-muted-foreground hover:text-foreground"
+                size="icon"
+                onClick={clearMessages}
+                className="text-muted-foreground hover:text-foreground rounded-xl"
               >
                 <Trash2 className="h-4 w-4" />
               </Button>
             )}
             <div className={`
-              flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium
+              flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-semibold shadow-soft
               ${isReady 
-                ? 'bg-green-500/10 text-green-600 dark:text-green-400' 
-                : 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400'
+                ? 'bg-mint/30 text-foreground border border-mint/50' 
+                : 'bg-gold/30 text-foreground border border-gold/50'
               }
             `}>
-              <span className={`w-2 h-2 rounded-full ${isReady ? 'bg-green-500' : 'bg-yellow-500 animate-pulse'}`} />
+              <span className={`w-2 h-2 rounded-full ${isReady ? 'bg-mint' : 'bg-gold animate-pulse'}`} />
               {isReady ? 'Ready' : 'Loading...'}
             </div>
           </div>
@@ -246,18 +258,23 @@ export default function Home() {
       </div>
 
       {/* 3D Avatar */}
-      <div className="relative h-[300px] flex-shrink-0 bg-muted/30">
+      <div className="relative h-[300px] flex-shrink-0 bg-gradient-to-b from-lavender-light/50 to-cream/50 dark:from-muted/30 dark:to-background/50">
+        {/* Radial gradient overlay for dreamy effect */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(245,168,151,0.1)_0%,transparent_70%)]" />
+        
         {isAvatarLoading && (
-          <div className="absolute inset-0 flex items-center justify-center z-10 bg-muted/50">
-            <div className="flex flex-col items-center gap-3">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">Loading avatar...</span>
+          <div className="absolute inset-0 flex items-center justify-center z-10 glass">
+            <div className="flex flex-col items-center gap-4 p-6 rounded-3xl bg-card/80 shadow-soft">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <span className="text-sm font-medium text-muted-foreground">Loading avatar...</span>
             </div>
           </div>
         )}
         {avatarError && (
           <div className="absolute inset-0 flex items-center justify-center z-10">
-            <span className="text-sm text-destructive">{avatarError}</span>
+            <div className="p-4 rounded-2xl bg-destructive/10 border border-destructive/30">
+              <span className="text-sm text-destructive">{avatarError}</span>
+            </div>
           </div>
         )}
         <AvatarCanvas
@@ -299,18 +316,67 @@ export default function Home() {
         )}
       </div>
 
-      {/* Chat Messages / Conversation */}
-      <div className="flex-1 overflow-y-auto p-6">
+      {/* Chat Messages */}
+      <div className="flex-1 overflow-y-auto p-6 relative z-10">
         <div className="max-w-3xl mx-auto space-y-4">
-          {/* Conversation Mode */}
-          {isConversationActive ? (
-            <>
-              {conversation.length === 0 && !conversationTranscript && !isThinking && (
-                <div className="flex flex-col items-center justify-center h-32 text-center gap-3">
-                  <MessageSquare className="h-8 w-8 text-muted-foreground/50" />
-                  <p className="text-sm text-muted-foreground">
-                    Press your hotkey to start talking
-                  </p>
+          {messages.length === 0 && !isRecording && !currentTranscript && (
+            <div className="flex flex-col items-center justify-center h-64 text-center gap-5">
+              <div className="p-5 rounded-3xl bg-lavender-light/50 dark:bg-muted/30 shadow-soft">
+                <MessageSquare className="h-10 w-10 text-primary/60" />
+              </div>
+              <div className="space-y-2">
+                <p className="text-base font-semibold text-foreground">
+                  No transcriptions yet
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Press and hold the hotkey to start dictating
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Transcription messages */}
+          {messages.map((message) => (
+            <div key={message.id} className="flex justify-start">
+              <div className="max-w-[85%] rounded-3xl px-5 py-4 bg-card shadow-soft border border-border/30 hover:shadow-soft-lg transition-shadow duration-200">
+                <p className="text-sm leading-relaxed text-foreground">{message.text}</p>
+                <p className="text-[10px] text-muted-foreground mt-2 font-medium">
+                  {new Date(message.timestamp).toLocaleTimeString()}
+                </p>
+              </div>
+            </div>
+          ))}
+
+          {/* Current transcript (while recording) */}
+          {currentTranscript && (
+            <div className="flex justify-start">
+              <div className="max-w-[85%] rounded-3xl px-5 py-4 bg-primary/10 text-foreground/80 italic border-2 border-dashed border-primary/30">
+                <p className="text-sm leading-relaxed">{currentTranscript}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Typing indicator (while recording but no transcript yet) */}
+          {isRecording && !currentTranscript && (
+            <div className="flex justify-start">
+              <div className="rounded-3xl px-5 py-4 bg-primary/20 shadow-glow border border-primary/30">
+                <div className="flex items-center gap-3">
+                  <Mic className="h-4 w-4 text-primary animate-pulse-soft" />
+                  <div className="flex gap-1.5">
+                    <span 
+                      className="w-2 h-2 bg-primary rounded-full animate-bounce" 
+                      style={{ animationDelay: '0ms' }} 
+                    />
+                    <span 
+                      className="w-2 h-2 bg-primary rounded-full animate-bounce" 
+                      style={{ animationDelay: '150ms' }} 
+                    />
+                    <span 
+                      className="w-2 h-2 bg-primary rounded-full animate-bounce" 
+                      style={{ animationDelay: '300ms' }} 
+                    />
+                  </div>
+                  <span className="text-xs font-medium text-foreground/70 ml-1">Listening...</span>
                 </div>
               )}
 
@@ -427,59 +493,11 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Footer with conversation toggle and settings */}
-      <div className="flex-shrink-0 p-4 border-t border-border/50">
-        <div className="max-w-3xl mx-auto flex items-center justify-between">
-          {/* Left: Hotkey hint */}
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Mic className="h-3 w-3" />
-            <span>Hold <kbd className="px-1 py-0.5 rounded bg-muted font-mono text-[10px]">⌘+Shift+Space</kbd> to record</span>
-          </div>
-
-          {/* Right: Conversation toggle and settings */}
-          <div className="flex items-center gap-2">
-            {/* Conversation mode toggle */}
-            {isConversationConfigured === false && !isConversationActive ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsSettingsOpen(true)}
-                className="text-muted-foreground hover:text-foreground text-xs"
-              >
-                <Settings className="h-4 w-4 mr-1" />
-                Configure voice chat
-              </Button>
-            ) : (
-              <Button
-                variant={isConversationActive ? "destructive" : "secondary"}
-                size="sm"
-                onClick={handleToggleConversation}
-                disabled={!isReady}
-              >
-                {isConversationActive ? (
-                  <>
-                    <MicOff className="h-4 w-4 mr-1" />
-                    End Chat
-                  </>
-                ) : (
-                  <>
-                    <Mic className="h-4 w-4 mr-1" />
-                    Voice Chat
-                  </>
-                )}
-              </Button>
-            )}
-
-            {/* Settings button */}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setIsSettingsOpen(true)}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <Settings className="h-4 w-4" />
-            </Button>
-          </div>
+      {/* Footer hint */}
+      <div className="flex-shrink-0 p-4 border-t border-border/30 glass relative z-10">
+        <div className="max-w-3xl mx-auto flex items-center justify-center gap-2 text-xs text-muted-foreground">
+          <Mic className="h-3.5 w-3.5 text-primary/60" />
+          <span className="font-medium">Hold <kbd className="px-2 py-1 rounded-lg bg-muted/80 font-mono text-[10px] text-foreground/80 border border-border/50">Cmd+Shift+Space</kbd> to record</span>
         </div>
       </div>
 

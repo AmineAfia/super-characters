@@ -4,51 +4,74 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-	--background: oklch(0.985 0.002 247.839);
-	--foreground: oklch(0.21 0.034 264.665);
-	--card: var(--color-white);
-	--card-foreground: var(--color-gray-900);
-	--popover: var(--color-white);
-	--popover-foreground: hsl(224 71.4% 4.1%);
-	--primary: #000000;
+	/* Super Characters - Soft, warm, dreamy aesthetic inspired by the kitten logo */
+	--background: #FDF8F5;
+	--foreground: #2D2A33;
+	--card: #FFFFFF;
+	--card-foreground: #2D2A33;
+	--popover: #FFFFFF;
+	--popover-foreground: #2D2A33;
+	--primary: #F5A897;
 	--primary-foreground: #FFFFFF;
-	--secondary: var(--color-gray-100);
-	--secondary-foreground: var(--color-gray-900);
-	--muted: var(--color-gray-100);
-	--muted-foreground: var(--color-gray-500);
-	--accent: var(--color-blue-600);
-	--accent-foreground: var(--color-white);
-	--destructive: oklch(0.637 0.237 25.331);
-	--destructive-foreground: oklch(0.577 0.245 27.325);
-	--border: var(--color-gray-200);
-	--border-subtle: var(--color-gray-300);
-	--input: var(--color-gray-200);
-	--ring: var(--color-gray-200);
-	--radius: 0.5rem;
+	--secondary: #E8E4EE;
+	--secondary-foreground: #2D2A33;
+	--muted: #F0EBF4;
+	--muted-foreground: #6B6777;
+	--accent: #B8D4E8;
+	--accent-foreground: #2D2A33;
+	--destructive: #E57373;
+	--destructive-foreground: #FFFFFF;
+	--border: #E8E4EE;
+	--border-subtle: #DDD7E5;
+	--input: #E8E4EE;
+	--ring: #F5A897;
+	--radius: 1rem;
+	
+	/* Custom palette for gradients and highlights */
+	--peach: #F5A897;
+	--peach-light: #FBD4CC;
+	--rose: #F8D4D4;
+	--lavender: #E8E4EE;
+	--lavender-light: #F5F2F8;
+	--cream: #FDF8F5;
+	--iridescent-blue: #B8D4E8;
+	--soft-gold: #F5E6D3;
+	--mint: #A8E6CF;
 }
 
 .dark {
-	/* Polar.sh exact background colors */
-	--background: hsl(233, 5%, 9.5%);
-	--foreground: var(--color-polar-50);
-	--card: #161618;
-	--card-foreground: var(--color-polar-50);
-	--popover: #101011;
-	--popover-foreground: var(--color-polar-50);
-	--primary: #FFFFFF;
-	--primary-foreground: #000000;
-	--secondary: #171719;
-	--secondary-foreground: var(--color-polar-50);
-	--muted: #1d1d20;
-	--muted-foreground: #6f717b;
-	--accent: var(--color-blue-600);
-	--accent-foreground: var(--color-polar-50);
-	--destructive: oklch(0.637 0.237 25.331);
-	--destructive-foreground: oklch(0.637 0.237 25.331);
-	--border: #1F1F21;
-	--border-subtle: hsl(0 0% 16%);
-	--input: #1F1F21;
-	--ring: #363636;
+	/* Super Characters - Warm dark mode with dreamy aesthetic */
+	--background: #1A1820;
+	--foreground: #F5F0F8;
+	--card: #252330;
+	--card-foreground: #F5F0F8;
+	--popover: #1E1C26;
+	--popover-foreground: #F5F0F8;
+	--primary: #F5A897;
+	--primary-foreground: #1A1820;
+	--secondary: #2A2633;
+	--secondary-foreground: #F5F0F8;
+	--muted: #2A2633;
+	--muted-foreground: #9D99A8;
+	--accent: #B8D4E8;
+	--accent-foreground: #1A1820;
+	--destructive: #E57373;
+	--destructive-foreground: #FFFFFF;
+	--border: #3A3645;
+	--border-subtle: #4A4555;
+	--input: #2A2633;
+	--ring: #F5A897;
+	
+	/* Dark mode custom palette */
+	--peach: #F5A897;
+	--peach-light: #D4948A;
+	--rose: #D4B0B0;
+	--lavender: #3A3645;
+	--lavender-light: #4A4555;
+	--cream: #2A2633;
+	--iridescent-blue: #7AB0D4;
+	--soft-gold: #D4C4B0;
+	--mint: #7AC4A8;
 }
 
 @theme inline {
@@ -156,13 +179,93 @@
 	/* Gradient text utility */
 	.text-gradient {
 		@apply bg-clip-text text-transparent;
-		background-image: linear-gradient(to right, #ffffff, #a1a1a1);
+		background-image: linear-gradient(135deg, var(--peach), var(--rose));
 	}
 
 	.text-gradient-blue {
 		@apply bg-clip-text text-transparent;
-		background-image: linear-gradient(135deg, #60a5fa, #3b82f6, #8b5cf6);
+		background-image: linear-gradient(135deg, var(--iridescent-blue), var(--accent));
 	}
+	
+	.text-gradient-warm {
+		@apply bg-clip-text text-transparent;
+		background-image: linear-gradient(135deg, var(--peach), var(--soft-gold));
+	}
+}
+
+/* Decorative bubble styles */
+.bubble {
+	position: absolute;
+	border-radius: 50%;
+	background: linear-gradient(135deg, rgba(184, 212, 232, 0.3), rgba(245, 168, 151, 0.2));
+	backdrop-filter: blur(2px);
+	animation: float 6s ease-in-out infinite;
+}
+
+.bubble-sm {
+	width: 12px;
+	height: 12px;
+}
+
+.bubble-md {
+	width: 24px;
+	height: 24px;
+}
+
+.bubble-lg {
+	width: 40px;
+	height: 40px;
+}
+
+@keyframes float {
+	0%, 100% {
+		transform: translateY(0) translateX(0);
+		opacity: 0.6;
+	}
+	50% {
+		transform: translateY(-20px) translateX(10px);
+		opacity: 1;
+	}
+}
+
+@keyframes pulse-soft {
+	0%, 100% {
+		opacity: 1;
+		transform: scale(1);
+	}
+	50% {
+		opacity: 0.8;
+		transform: scale(1.05);
+	}
+}
+
+@keyframes glow {
+	0%, 100% {
+		box-shadow: 0 0 20px rgba(245, 168, 151, 0.3);
+	}
+	50% {
+		box-shadow: 0 0 40px rgba(245, 168, 151, 0.5);
+	}
+}
+
+.animate-pulse-soft {
+	animation: pulse-soft 2s ease-in-out infinite;
+}
+
+.animate-glow {
+	animation: glow 2s ease-in-out infinite;
+}
+
+/* Glass morphism effect */
+.glass {
+	background: rgba(255, 255, 255, 0.7);
+	backdrop-filter: blur(12px);
+	border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.dark .glass {
+	background: rgba(42, 38, 51, 0.7);
+	border: 1px solid rgba(58, 54, 69, 0.5);
 }
 
 .no-visible-scrollbar {

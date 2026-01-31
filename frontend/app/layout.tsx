@@ -4,6 +4,13 @@ import { ThemeProvider } from "@/components/theme-provider";
 
 import { GeistMono } from "geist/font/mono";
 import { GeistSans } from "geist/font/sans";
+import { Nunito } from "next/font/google";
+
+const nunito = Nunito({
+  subsets: ["latin"],
+  variable: "--font-nunito",
+  weight: ["400", "500", "600", "700"],
+});
 
 export const metadata: Metadata = {
   title: "Super Characters",
@@ -18,7 +25,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`antialiased ${GeistSans.variable} ${GeistMono.variable}`}
+        className={`antialiased ${nunito.variable} ${GeistSans.variable} ${GeistMono.variable}`}
         style={{ textRendering: "optimizeLegibility" }}
       >
         <ThemeProvider
