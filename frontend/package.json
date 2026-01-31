@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@met4citizen/talkinghead": "^1.7.0",
     "@radix-ui/react-slot": "^1.2.4",
     "@wailsio/runtime": "^3.0.0-alpha.64",
     "class-variance-authority": "^0.7.1",
@@ -19,9 +20,11 @@
     "next-themes": "^0.4.6",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "tailwind-merge": "^3.3.1"
+    "tailwind-merge": "^3.3.1",
+    "three": "^0.182.0"
   },
   "devDependencies": {
+    "@types/three": "^0.182.0",
     "@tailwindcss/postcss": "^4.1.13",
     "@types/node": "^22.15.21",
     "@types/react": "^19.2.2",

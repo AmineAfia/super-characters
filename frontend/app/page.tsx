@@ -1,9 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import { useTranscription } from "@/hooks/useTranscription";
-import { Mic, MessageSquare, Trash2, ShieldAlert } from "lucide-react";
+import { Mic, MessageSquare, Trash2, ShieldAlert, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import type { AvatarCanvasHandle } from "@/components/AvatarCanvas";
+
+// Dynamic import to avoid SSR issues with Three.js/TalkingHead
+const AvatarCanvas = dynamic(() => import("@/components/AvatarCanvas"), { ssr: false });
 
 export default function Home() {
   const {
@@ -15,8 +20,11 @@ export default function Home() {
   } = useTranscription();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const avatarRef = useRef<AvatarCanvasHandle>(null);
   const [hasAccessibility, setHasAccessibility] = useState<boolean | null>(null);
   const [micPermission, setMicPermission] = useState<string>("unknown");
+  const [isAvatarLoading, setIsAvatarLoading] = useState(true);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
 
   // Check permissions on mount
   useEffect(() => {
@@ -162,6 +170,28 @@ export default function Home() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* 3D Avatar */}
+      <div className="relative h-[300px] flex-shrink-0 bg-muted/30">
+        {isAvatarLoading && (
+          <div className="absolute inset-0 flex items-center justify-center z-10 bg-muted/50">
+            <div className="flex flex-col items-center gap-3">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">Loading avatar...</span>
+            </div>
+          </div>
+        )}
+        {avatarError && (
+          <div className="absolute inset-0 flex items-center justify-center z-10">
+            <span className="text-sm text-destructive">{avatarError}</span>
+          </div>
+        )}
+        <AvatarCanvas
+          ref={avatarRef}
+          onLoaded={() => setIsAvatarLoading(false)}
+          onError={(err) => { setIsAvatarLoading(false); setAvatarError(err); }}
+        />
       </div>
 
       {/* Chat Messages */}
