@@ -13,6 +13,7 @@ import (
 	"super-characters/gemini"
 	"super-characters/hotkey"
 	"super-characters/permissions"
+	"super-characters/pipedream"
 	"super-characters/settings"
 	"super-characters/transcription"
 	"super-characters/vad"
@@ -46,6 +47,7 @@ type App struct {
 	geminiService     *gemini.GeminiService
 	elevenlabsService *elevenlabs.ElevenLabsService
 	settingsService   *settings.SettingsService
+	pipedreamService  *pipedream.Service
 
 	// Recording state
 	isTranscribing bool
@@ -93,6 +95,7 @@ func NewApp() *App {
 		geminiService:        gemini.NewGeminiService(),
 		elevenlabsService:    elevenlabs.NewElevenLabsService(),
 		settingsService:      settingsSvc,
+		pipedreamService:     pipedream.NewService(),
 		vadService:           vad.NewVADService(vadCfg),
 		continuousState:      ConversationStateIdle,
 	}
@@ -290,6 +293,16 @@ func (a *App) ServiceStartup(ctx context.Context, options application.ServiceOpt
 			if currentSettings.ElevenLabsVoiceID != "" {
 				a.elevenlabsService.SetVoiceID(currentSettings.ElevenLabsVoiceID)
 			}
+		}
+		// Configure Pipedream service
+		if a.pipedreamService != nil && currentSettings.PipedreamClientID != "" {
+			a.pipedreamService.Configure(pipedream.Config{
+				ClientID:     currentSettings.PipedreamClientID,
+				ClientSecret: currentSettings.PipedreamClientSecret,
+				ProjectID:    currentSettings.PipedreamProjectID,
+				Environment:  a.settingsService.GetPipedreamEnvironment(),
+			})
+			slog.Info("Pipedream service configured from settings")
 		}
 	}
 
@@ -1134,3 +1147,126 @@ func (a *App) IsTTSConfigured() bool {
 }
 
 // #endregion TTS API
+
+// #region Pipedream API
+
+// SetPipedreamCredentials updates all Pipedream credentials at once.
+func (a *App) SetPipedreamCredentials(clientID, clientSecret, projectID, environment string) string {
+	if a.settingsService == nil {
+		return "Settings service not available"
+	}
+
+	// Validate environment
+	if environment != "development" && environment != "production" {
+		environment = "development"
+	}
+
+	// Save each setting
+	if err := a.settingsService.SetPipedreamClientID(clientID); err != nil {
+		return fmt.Sprintf("Failed to save client ID: %v", err)
+	}
+	if err := a.settingsService.SetPipedreamClientSecret(clientSecret); err != nil {
+		return fmt.Sprintf("Failed to save client secret: %v", err)
+	}
+	if err := a.settingsService.SetPipedreamProjectID(projectID); err != nil {
+		return fmt.Sprintf("Failed to save project ID: %v", err)
+	}
+	if err := a.settingsService.SetPipedreamEnvironment(environment); err != nil {
+		return fmt.Sprintf("Failed to save environment: %v", err)
+	}
+
+	// Configure the Pipedream service
+	if a.pipedreamService != nil {
+		a.pipedreamService.Configure(pipedream.Config{
+			ClientID:     clientID,
+			ClientSecret: clientSecret,
+			ProjectID:    projectID,
+			Environment:  environment,
+		})
+		slog.Info("Pipedream service reconfigured")
+	}
+
+	return ""
+}
+
+// IsPipedreamConfigured returns whether Pipedream credentials are set.
+func (a *App) IsPipedreamConfigured() bool {
+	return a.pipedreamService != nil && a.pipedreamService.IsConfigured()
+}
+
+// GetPipedreamMCPConfig returns the MCP configuration for the frontend.
+func (a *App) GetPipedreamMCPConfig() map[string]string {
+	if a.pipedreamService == nil {
+		return nil
+	}
+	return a.pipedreamService.GetMCPConfig()
+}
+
+// GetPipedreamMCPAccessToken returns an access token for MCP server authentication.
+func (a *App) GetPipedreamMCPAccessToken() (string, error) {
+	if a.pipedreamService == nil {
+		return "", fmt.Errorf("pipedream service not available")
+	}
+	return a.pipedreamService.GetMCPAccessToken()
+}
+
+// CreatePipedreamConnectToken creates a short-lived token for the frontend SDK.
+func (a *App) CreatePipedreamConnectToken(externalUserID string) (*pipedream.TokenResponse, error) {
+	if a.pipedreamService == nil {
+		return nil, fmt.Errorf("pipedream service not available")
+	}
+	return a.pipedreamService.CreateConnectToken(externalUserID)
+}
+
+// ListPipedreamApps lists available Pipedream apps with optional search.
+func (a *App) ListPipedreamApps(query string, limit int) ([]pipedream.App, error) {
+	if a.pipedreamService == nil {
+		return nil, fmt.Errorf("pipedream service not available")
+	}
+	return a.pipedreamService.ListApps(query, limit)
+}
+
+// ListPipedreamConnectedAccounts lists accounts connected by the user.
+func (a *App) ListPipedreamConnectedAccounts(externalUserID string) ([]pipedream.ConnectedAccount, error) {
+	if a.pipedreamService == nil {
+		return nil, fmt.Errorf("pipedream service not available")
+	}
+	return a.pipedreamService.ListConnectedAccounts(externalUserID)
+}
+
+// DeletePipedreamConnectedAccount removes a connected account.
+func (a *App) DeletePipedreamConnectedAccount(accountID string) error {
+	if a.pipedreamService == nil {
+		return fmt.Errorf("pipedream service not available")
+	}
+	return a.pipedreamService.DeleteConnectedAccount(accountID)
+}
+
+// GetPipedreamConnectLinkURL returns a Connect Link URL for connecting an app.
+func (a *App) GetPipedreamConnectLinkURL(externalUserID, appSlug string) (string, error) {
+	if a.pipedreamService == nil {
+		return "", fmt.Errorf("pipedream service not available")
+	}
+	return a.pipedreamService.GetConnectLinkURL(externalUserID, appSlug)
+}
+
+// OpenPipedreamConnectLink opens the Pipedream Connect Link in the system browser
+func (a *App) OpenPipedreamConnectLink(externalUserID, appSlug string) error {
+	if a.pipedreamService == nil {
+		return fmt.Errorf("pipedream service not available")
+	}
+	
+	url, err := a.pipedreamService.GetConnectLinkURL(externalUserID, appSlug)
+	if err != nil {
+		return err
+	}
+	
+	return a.openURLInBrowser(url)
+}
+
+// openURLInBrowser opens a URL in the system's default browser
+func (a *App) openURLInBrowser(url string) error {
+	return openBrowser(url)
+}
+
+// #endregion Pipedream API

@@ -20,6 +20,18 @@ export class Settings {
      */
     "silenceDurationMs": number;
 
+    /**
+     * Pipedream Connect settings
+     */
+    "pipedreamClientId": string;
+    "pipedreamClientSecret": string;
+    "pipedreamProjectId": string;
+
+    /**
+     * "development" or "production"
+     */
+    "pipedreamEnvironment": string;
+
     /** Creates a new Settings instance. */
     constructor($$source: Partial<Settings> = {}) {
         if (!("geminiApiKey" in $$source)) {
@@ -36,6 +48,18 @@ export class Settings {
         }
         if (!("silenceDurationMs" in $$source)) {
             this["silenceDurationMs"] = 0;
+        }
+        if (!("pipedreamClientId" in $$source)) {
+            this["pipedreamClientId"] = "";
+        }
+        if (!("pipedreamClientSecret" in $$source)) {
+            this["pipedreamClientSecret"] = "";
+        }
+        if (!("pipedreamProjectId" in $$source)) {
+            this["pipedreamProjectId"] = "";
+        }
+        if (!("pipedreamEnvironment" in $$source)) {
+            this["pipedreamEnvironment"] = "";
         }
 
         Object.assign(this, $$source);

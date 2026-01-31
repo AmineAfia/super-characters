@@ -77,14 +77,14 @@ export function useConversation(options?: UseConversationOptions): ConversationS
 
     try {
       // Dynamically import agent to avoid SSR issues
-      const { createConversationAgent, isAgentConfigured } = await import("@/lib/agent")
+      const { createConversationAgentWithMCP, isAgentConfigured } = await import("@/lib/agent")
 
       if (!isAgentConfigured()) {
         throw new Error("Gemini API key not configured. Please add it in Settings.")
       }
 
-      // Create agent and build messages from conversation history
-      const agent = createConversationAgent()
+      // Create agent with MCP tools and build messages from conversation history
+      const agent = await createConversationAgentWithMCP()
       
       // Format as proper messages for the AI SDK
       const messages = conversationHistoryRef.current.map((m) => ({

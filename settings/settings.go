@@ -18,6 +18,12 @@ type Settings struct {
 	ElevenLabsVoiceID  string `json:"elevenLabsVoiceId"`
 	PressAndTalkHotkey string `json:"pressAndTalkHotkey"`
 	SilenceDurationMs  int    `json:"silenceDurationMs"` // Silence duration for VAD (default: 300ms)
+
+	// Pipedream Connect settings
+	PipedreamClientID     string `json:"pipedreamClientId"`
+	PipedreamClientSecret string `json:"pipedreamClientSecret"`
+	PipedreamProjectID    string `json:"pipedreamProjectId"`
+	PipedreamEnvironment  string `json:"pipedreamEnvironment"` // "development" or "production"
 }
 
 // SettingsService manages persistent settings storage.
@@ -176,4 +182,64 @@ func (s *SettingsService) GetSilenceDurationMs() int {
 		return DefaultSilenceDurationMs
 	}
 	return s.settings.SilenceDurationMs
+}
+
+// SetPipedreamClientID updates the Pipedream client ID.
+func (s *SettingsService) SetPipedreamClientID(clientID string) error {
+	s.mu.Lock()
+	s.settings.PipedreamClientID = clientID
+	s.mu.Unlock()
+
+	return s.save()
+}
+
+// SetPipedreamClientSecret updates the Pipedream client secret.
+func (s *SettingsService) SetPipedreamClientSecret(clientSecret string) error {
+	s.mu.Lock()
+	s.settings.PipedreamClientSecret = clientSecret
+	s.mu.Unlock()
+
+	return s.save()
+}
+
+// SetPipedreamProjectID updates the Pipedream project ID.
+func (s *SettingsService) SetPipedreamProjectID(projectID string) error {
+	s.mu.Lock()
+	s.settings.PipedreamProjectID = projectID
+	s.mu.Unlock()
+
+	return s.save()
+}
+
+// SetPipedreamEnvironment updates the Pipedream environment.
+func (s *SettingsService) SetPipedreamEnvironment(environment string) error {
+	// Validate environment value
+	if environment != "development" && environment != "production" {
+		environment = "development"
+	}
+
+	s.mu.Lock()
+	s.settings.PipedreamEnvironment = environment
+	s.mu.Unlock()
+
+	return s.save()
+}
+
+// GetPipedreamEnvironment returns the Pipedream environment with a default fallback.
+func (s *SettingsService) GetPipedreamEnvironment() string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if s.settings.PipedreamEnvironment == "" {
+		return "development"
+	}
+	return s.settings.PipedreamEnvironment
+}
+
+// IsPipedreamConfigured returns whether Pipedream credentials are set.
+func (s *SettingsService) IsPipedreamConfigured() bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.settings.PipedreamClientID != "" &&
+		s.settings.PipedreamClientSecret != "" &&
+		s.settings.PipedreamProjectID != ""
 }

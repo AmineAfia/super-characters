@@ -16,6 +16,9 @@ import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Cr
 import * as application$0 from "../github.com/wailsapp/wails/v3/pkg/application/models.ts";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as pipedream$0 from "./pipedream/models.ts";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as settings$0 from "./settings/models.ts";
 
 /**
@@ -31,6 +34,22 @@ export function CheckAccessibility(): $CancellablePromise<boolean> {
  */
 export function CheckMicrophone(): $CancellablePromise<string> {
     return $Call.ByID(2449451919);
+}
+
+/**
+ * CreatePipedreamConnectToken creates a short-lived token for the frontend SDK.
+ */
+export function CreatePipedreamConnectToken(externalUserID: string): $CancellablePromise<pipedream$0.TokenResponse | null> {
+    return $Call.ByID(3254815427, externalUserID).then(($result: any) => {
+        return $$createType1($result);
+    });
+}
+
+/**
+ * DeletePipedreamConnectedAccount removes a connected account.
+ */
+export function DeletePipedreamConnectedAccount(accountID: string): $CancellablePromise<void> {
+    return $Call.ByID(591419771, accountID);
 }
 
 /**
@@ -52,7 +71,30 @@ export function GetContinuousState(): $CancellablePromise<string> {
  */
 export function GetLanguages(): $CancellablePromise<string[]> {
     return $Call.ByID(3533302854).then(($result: any) => {
-        return $$createType0($result);
+        return $$createType2($result);
+    });
+}
+
+/**
+ * GetPipedreamConnectLinkURL returns a Connect Link URL for connecting an app.
+ */
+export function GetPipedreamConnectLinkURL(externalUserID: string, appSlug: string): $CancellablePromise<string> {
+    return $Call.ByID(2392201065, externalUserID, appSlug);
+}
+
+/**
+ * GetPipedreamMCPAccessToken returns an access token for MCP server authentication.
+ */
+export function GetPipedreamMCPAccessToken(): $CancellablePromise<string> {
+    return $Call.ByID(2113023733);
+}
+
+/**
+ * GetPipedreamMCPConfig returns the MCP configuration for the frontend.
+ */
+export function GetPipedreamMCPConfig(): $CancellablePromise<{ [_: string]: string }> {
+    return $Call.ByID(907643680).then(($result: any) => {
+        return $$createType3($result);
     });
 }
 
@@ -61,7 +103,7 @@ export function GetLanguages(): $CancellablePromise<string[]> {
  */
 export function GetSettings(): $CancellablePromise<settings$0.Settings> {
     return $Call.ByID(2554697378).then(($result: any) => {
-        return $$createType1($result);
+        return $$createType4($result);
     });
 }
 
@@ -108,6 +150,13 @@ export function IsOverlayVisible(): $CancellablePromise<boolean> {
 }
 
 /**
+ * IsPipedreamConfigured returns whether Pipedream credentials are set.
+ */
+export function IsPipedreamConfigured(): $CancellablePromise<boolean> {
+    return $Call.ByID(3418806408);
+}
+
+/**
  * IsReady returns whether the transcription service is initialized
  */
 export function IsReady(): $CancellablePromise<boolean> {
@@ -129,6 +178,24 @@ export function IsTranscribing(): $CancellablePromise<boolean> {
 }
 
 /**
+ * ListPipedreamApps lists available Pipedream apps with optional search.
+ */
+export function ListPipedreamApps(query: string, limit: number): $CancellablePromise<pipedream$0.App[]> {
+    return $Call.ByID(1900254612, query, limit).then(($result: any) => {
+        return $$createType6($result);
+    });
+}
+
+/**
+ * ListPipedreamConnectedAccounts lists accounts connected by the user.
+ */
+export function ListPipedreamConnectedAccounts(externalUserID: string): $CancellablePromise<pipedream$0.ConnectedAccount[]> {
+    return $Call.ByID(514915583, externalUserID).then(($result: any) => {
+        return $$createType8($result);
+    });
+}
+
+/**
  * OpenAccessibilitySettings opens System Settings to the Accessibility pane
  */
 export function OpenAccessibilitySettings(): $CancellablePromise<void> {
@@ -140,6 +207,13 @@ export function OpenAccessibilitySettings(): $CancellablePromise<void> {
  */
 export function OpenMicrophoneSettings(): $CancellablePromise<void> {
     return $Call.ByID(2078724176);
+}
+
+/**
+ * OpenPipedreamConnectLink opens the Pipedream Connect Link in the system browser
+ */
+export function OpenPipedreamConnectLink(externalUserID: string, appSlug: string): $CancellablePromise<void> {
+    return $Call.ByID(2811446514, externalUserID, appSlug);
 }
 
 /**
@@ -223,6 +297,13 @@ export function SetOverlayWindow(window: application$0.WebviewWindow | null): $C
 }
 
 /**
+ * SetPipedreamCredentials updates all Pipedream credentials at once.
+ */
+export function SetPipedreamCredentials(clientID: string, clientSecret: string, projectID: string, environment: string): $CancellablePromise<string> {
+    return $Call.ByID(542320872, clientID, clientSecret, projectID, environment);
+}
+
+/**
  * SetSelectedLanguage sets the language for transcription
  */
 export function SetSelectedLanguage(language: string): $CancellablePromise<void> {
@@ -283,5 +364,12 @@ export function SynthesizeSpeech(text: string): $CancellablePromise<string> {
 }
 
 // Private type creation functions
-const $$createType0 = $Create.Array($Create.Any);
-const $$createType1 = settings$0.Settings.createFrom;
+const $$createType0 = pipedream$0.TokenResponse.createFrom;
+const $$createType1 = $Create.Nullable($$createType0);
+const $$createType2 = $Create.Array($Create.Any);
+const $$createType3 = $Create.Map($Create.Any, $Create.Any);
+const $$createType4 = settings$0.Settings.createFrom;
+const $$createType5 = pipedream$0.App.createFrom;
+const $$createType6 = $Create.Array($$createType5);
+const $$createType7 = pipedream$0.ConnectedAccount.createFrom;
+const $$createType8 = $Create.Array($$createType7);
