@@ -265,7 +265,7 @@ export default function Home() {
                   style={{ borderColor: selectedCharacter.color }}
                 >
                   <img 
-                    src={selectedCharacter.avatarUrl}
+                    src={selectedCharacter.thumbnailUrl}
                     alt={selectedCharacter.name}
                     className="w-full h-full object-cover"
                     crossOrigin="anonymous"

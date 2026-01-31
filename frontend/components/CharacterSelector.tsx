@@ -1,10 +1,46 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
+import dynamic from "next/dynamic"
 import { ChevronLeft, ChevronRight, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import CharacterCard, { type Character } from "@/components/CharacterCard"
 import { cn } from "@/lib/utils"
+
+// Dynamically import AvatarPreview3D with SSR disabled (Three.js is browser-only)
+const AvatarPreview3D = dynamic(() => import("@/components/AvatarPreview3D"), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-full flex items-center justify-center bg-muted/30 animate-pulse rounded-2xl">
+      <div className="w-16 h-16 rounded-full bg-muted/50" />
+    </div>
+  ),
+})
+
+// Helper to get thumbnail URL from GLB URL
+function getAvatarThumbnail(glbUrl: string): string {
+  // Ready Player Me provides PNG renders by replacing .glb with .png
+  return glbUrl.replace(/\.glb.*$/, '.png')
+}
+
+// Ready Player Me render API URL for portrait renders
+// Using the simple .png endpoint which returns a clean portrait render
+const getRenderUrl = (avatarId: string) => 
+  `https://models.readyplayer.me/${avatarId}.png`
+
+// Ready Player Me GLB URL with morph targets for lip-sync
+const getGlbUrl = (avatarId: string) =>
+  `https://models.readyplayer.me/${avatarId}.glb?morphTargets=ARKit,Oculus+Visemes,mouthOpen,mouthSmile,eyesClosed,eyesLookUp,eyesLookDown&textureSizeLimit=1024&textureFormat=png`
+
+// Valid Ready Player Me avatar IDs (these are public demo avatars)
+// Note: Replace with your own avatar IDs from readyplayer.me
+const AVATAR_IDS = {
+  luna: "64bfa15f0e72c63d7c3934a6",    // Female, dark hair, glasses
+  atlas: "64bfa15f0e72c63d7c3934a6",   // Using Luna as fallback (create your own avatar at readyplayer.me)
+  nova: "64bfa15f0e72c63d7c3934a6",    // Using Luna as fallback
+  echo: "64bfa15f0e72c63d7c3934a6",    // Using Luna as fallback
+  pixel: "64bfa15f0e72c63d7c3934a6",   // Using Luna as fallback
+}
 
 // Sample characters data - in a real app, this would come from settings/backend
 const defaultCharacters: Character[] = [
@@ -14,7 +50,8 @@ const defaultCharacters: Character[] = [
     subtitle: "Dream Weaver",
     voice: "Rachel",
     model: "Gemini Pro",
-    avatarUrl: "https://models.readyplayer.me/64bfa15f0e72c63d7c3934a6.glb?morphTargets=ARKit,Oculus+Visemes&textureSizeLimit=256&textureFormat=png&preview=true",
+    avatarUrl: getGlbUrl(AVATAR_IDS.luna),
+    thumbnailUrl: getRenderUrl(AVATAR_IDS.luna),
     description: "A gentle and thoughtful companion who excels at creative conversations and storytelling. Luna's dreamy personality makes her perfect for brainstorming and imaginative discussions.",
     color: "#F5A897",
   },
@@ -24,7 +61,8 @@ const defaultCharacters: Character[] = [
     subtitle: "Knowledge Keeper",
     voice: "Antoni",
     model: "GPT-4",
-    avatarUrl: "https://models.readyplayer.me/6721d2246d68ddd15c7488dc.glb?morphTargets=ARKit,Oculus+Visemes&textureSizeLimit=256&textureFormat=png&preview=true",
+    avatarUrl: getGlbUrl(AVATAR_IDS.atlas),
+    thumbnailUrl: getRenderUrl(AVATAR_IDS.atlas),
     description: "A wise and analytical assistant focused on research and detailed explanations. Atlas helps you navigate complex topics with clarity and precision.",
     color: "#B8D4E8",
   },
@@ -34,7 +72,8 @@ const defaultCharacters: Character[] = [
     subtitle: "Energy Spark",
     voice: "Elli",
     model: "Claude 3",
-    avatarUrl: "https://models.readyplayer.me/67234d396d68ddd15c79f13b.glb?morphTargets=ARKit,Oculus+Visemes&textureSizeLimit=256&textureFormat=png&preview=true",
+    avatarUrl: getGlbUrl(AVATAR_IDS.nova),
+    thumbnailUrl: getRenderUrl(AVATAR_IDS.nova),
     description: "An enthusiastic and energetic companion who brings positivity to every conversation. Nova is great for motivation, brainstorming, and uplifting chats.",
     color: "#A8E6CF",
   },
@@ -44,7 +83,8 @@ const defaultCharacters: Character[] = [
     subtitle: "Calm Sage",
     voice: "Adam",
     model: "Gemini Pro",
-    avatarUrl: "https://models.readyplayer.me/67234d866d68ddd15c79f6cc.glb?morphTargets=ARKit,Oculus+Visemes&textureSizeLimit=256&textureFormat=png&preview=true",
+    avatarUrl: getGlbUrl(AVATAR_IDS.echo),
+    thumbnailUrl: getRenderUrl(AVATAR_IDS.echo),
     description: "A calm and composed assistant who specializes in thoughtful responses. Echo is ideal for deep conversations and mindful discussions.",
     color: "#E8E4EE",
   },
@@ -54,7 +94,8 @@ const defaultCharacters: Character[] = [
     subtitle: "Tech Guide",
     voice: "Josh",
     model: "GPT-4",
-    avatarUrl: "https://models.readyplayer.me/67234dcc6d68ddd15c79fc24.glb?morphTargets=ARKit,Oculus+Visemes&textureSizeLimit=256&textureFormat=png&preview=true",
+    avatarUrl: getGlbUrl(AVATAR_IDS.pixel),
+    thumbnailUrl: getRenderUrl(AVATAR_IDS.pixel),
     description: "A tech-savvy companion who loves helping with coding, debugging, and all things technical. Pixel makes complex tech topics accessible and fun.",
     color: "#7AB0D4",
   },
@@ -208,80 +249,55 @@ export default function CharacterSelector({
         </div>
 
         {/* Character Preview */}
-        <div className="lg:w-1/2 flex flex-col p-6 border-t lg:border-t-0 lg:border-l border-border/30">
-          {/* Preview card */}
-          <div className="flex-1 flex flex-col items-center justify-center">
-            {/* Large avatar preview */}
-            <div className="relative mb-6">
-              <div 
-                className="w-40 h-40 rounded-full overflow-hidden border-4 shadow-glow-lg"
-                style={{ borderColor: selectedCharacter.color }}
-              >
-                <img
-                  src={selectedCharacter.avatarUrl}
-                  alt={selectedCharacter.name}
-                  className="w-full h-full object-cover"
-                  crossOrigin="anonymous"
-                />
-              </div>
-              <div 
-                className="absolute -inset-4 rounded-full blur-2xl opacity-30 -z-10"
-                style={{ backgroundColor: selectedCharacter.color }}
+        <div className="lg:w-1/2 flex flex-col border-t lg:border-t-0 lg:border-l border-border/30 relative">
+          {/* 3D Avatar Preview - fills the space above character details */}
+          <div className="flex-1 relative min-h-[300px]">
+            {/* Subtle spotlight glow at the bottom */}
+            <div 
+              className="absolute bottom-0 left-1/2 -translate-x-1/2 w-64 h-32 rounded-full blur-3xl opacity-30 pointer-events-none"
+              style={{ backgroundColor: selectedCharacter.color }}
+            />
+            
+            {/* 3D Avatar Canvas - no border, seamless */}
+            <div className="absolute inset-0">
+              <AvatarPreview3D
+                key={selectedCharacter.id}
+                avatarUrl={selectedCharacter.avatarUrl}
+                onLoaded={() => console.log(`[CharacterSelector] ${selectedCharacter.name} avatar loaded`)}
+                onError={(err) => console.error(`[CharacterSelector] Failed to load ${selectedCharacter.name}:`, err)}
               />
             </div>
+          </div>
 
-            {/* Character details */}
-            <div className="text-center space-y-3 max-w-sm">
-              <div>
-                <h2 className="text-2xl font-bold text-foreground">
-                  {selectedCharacter.name}
-                </h2>
-                <p 
-                  className="text-sm font-medium uppercase tracking-wider"
-                  style={{ color: selectedCharacter.color }}
-                >
-                  {selectedCharacter.subtitle}
-                </p>
-              </div>
-
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                {selectedCharacter.description}
+          {/* Character details - fixed at bottom */}
+          <div className="flex-shrink-0 p-6 pt-0">
+            <div className="text-center space-y-2 max-w-sm mx-auto">
+              <h2 className="text-2xl font-bold text-foreground">
+                {selectedCharacter.name}
+              </h2>
+              <p 
+                className="text-sm font-medium uppercase tracking-wider"
+                style={{ color: selectedCharacter.color }}
+              >
+                {selectedCharacter.subtitle}
               </p>
-
-              {/* Stats grid */}
-              <div className="grid grid-cols-2 gap-3 pt-4">
-                <div className="p-3 rounded-xl bg-muted/50 backdrop-blur-sm border border-border/30">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
-                    Voice
-                  </p>
-                  <p className="font-semibold text-foreground">
-                    {selectedCharacter.voice}
-                  </p>
-                </div>
-                <div className="p-3 rounded-xl bg-muted/50 backdrop-blur-sm border border-border/30">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
-                    LLM Model
-                  </p>
-                  <p className="font-semibold text-foreground">
-                    {selectedCharacter.model}
-                  </p>
-                </div>
-              </div>
             </div>
 
             {/* Select button */}
-            <Button 
-              size="lg"
-              className="mt-8 px-8 rounded-2xl shadow-glow hover:shadow-glow-lg transition-all duration-300"
-              style={{ 
-                backgroundColor: selectedCharacter.color,
-                color: '#fff'
-              }}
-              onClick={() => onSelect(selectedCharacter)}
-            >
-              <Sparkles className="w-4 h-4 mr-2" />
-              Select {selectedCharacter.name}
-            </Button>
+            <div className="flex justify-center mt-4">
+              <Button 
+                size="lg"
+                className="px-8 rounded-2xl shadow-glow hover:shadow-glow-lg transition-all duration-300"
+                style={{ 
+                  backgroundColor: selectedCharacter.color,
+                  color: '#fff'
+                }}
+                onClick={() => onSelect(selectedCharacter)}
+              >
+                <Sparkles className="w-4 h-4 mr-2" />
+                Select {selectedCharacter.name}
+              </Button>
+            </div>
           </div>
         </div>
       </div>

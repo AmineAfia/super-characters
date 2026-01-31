@@ -10,6 +10,7 @@ export interface Character {
   voice: string
   model: string
   avatarUrl: string
+  thumbnailUrl: string
   description: string
   color: string
 }
@@ -58,7 +59,7 @@ export default function CharacterCard({
           isSelected ? "border-primary shadow-glow" : "border-border/30"
         )}>
           <img
-            src={character.avatarUrl}
+            src={character.thumbnailUrl}
             alt={character.name}
             className="w-full h-full object-cover"
             crossOrigin="anonymous"
