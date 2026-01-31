@@ -4,10 +4,12 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { useTranscription } from "@/hooks/useTranscription";
 import { useConversation } from "@/hooks/useConversation";
-import { Mic, MicOff, MessageSquare, Trash2, ShieldAlert, Loader2, Settings } from "lucide-react";
+import { Mic, MicOff, MessageSquare, Trash2, ShieldAlert, Loader2, Settings, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import SettingsModal from "@/components/SettingsModal";
+import CharacterSelector from "@/components/CharacterSelector";
 import type { AvatarCanvasHandle } from "@/components/AvatarCanvas";
+import type { Character } from "@/components/CharacterCard";
 
 // Dynamic import to avoid SSR issues with Three.js/TalkingHead
 const AvatarCanvas = dynamic(() => import("@/components/AvatarCanvas"), { ssr: false });
@@ -31,6 +33,10 @@ export default function Home() {
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isConversationConfigured, setIsConversationConfigured] = useState<boolean | null>(null);
+  
+  // Character selection state
+  const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null);
+  const [showCharacterSelect, setShowCharacterSelect] = useState(true);
 
   // Handle audio playback via avatar
   const handleAudioReceived = useCallback(async ({ text, audioBase64 }: { text: string; audioBase64: string | null }) => {
@@ -163,6 +169,20 @@ export default function Home() {
   const currentTranscript = isConversationActive ? conversationTranscript : transcriptionTranscript;
   const isCurrentlyRecording = isConversationActive ? isListening : isRecording;
 
+  // Handle character selection
+  const handleCharacterSelect = (character: Character) => {
+    setSelectedCharacter(character);
+    setShowCharacterSelect(false);
+    // Reset avatar loading state for new character
+    setIsAvatarLoading(true);
+    setAvatarError(null);
+  };
+
+  // Show character selection screen
+  if (showCharacterSelect) {
+    return <CharacterSelector onSelect={handleCharacterSelect} selectedCharacterId={selectedCharacter?.id} />;
+  }
+
   return (
     <div className="flex flex-col h-full bg-background relative overflow-hidden">
       {/* Decorative bubbles */}
@@ -228,20 +248,52 @@ export default function Home() {
       <div className="flex-shrink-0 p-6 pb-4 border-b border-border/30 glass relative z-10">
         <div className="flex items-center justify-between max-w-3xl mx-auto w-full">
           <div className="flex items-center gap-4">
+            {/* Back to character select button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowCharacterSelect(true)}
+              className="text-muted-foreground hover:text-foreground rounded-xl"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            
             <div className="relative">
-              <img 
-                src="/logo.png" 
-                alt="Super Characters" 
-                className="h-12 w-12 rounded-2xl shadow-soft hover:shadow-soft-lg transition-shadow duration-300" 
-              />
+              {selectedCharacter ? (
+                <div 
+                  className="h-12 w-12 rounded-2xl shadow-soft overflow-hidden border-2"
+                  style={{ borderColor: selectedCharacter.color }}
+                >
+                  <img 
+                    src={selectedCharacter.thumbnailUrl}
+                    alt={selectedCharacter.name}
+                    className="w-full h-full object-cover"
+                    crossOrigin="anonymous"
+                  />
+                </div>
+              ) : (
+                <img 
+                  src="/logo.png" 
+                  alt="Super Characters" 
+                  className="h-12 w-12 rounded-2xl shadow-soft hover:shadow-soft-lg transition-shadow duration-300" 
+                />
+              )}
               <div className="absolute -inset-1 rounded-2xl bg-primary/20 blur-md -z-10" />
             </div>
             <div className="space-y-1">
               <h1 className="text-xl font-bold tracking-tight text-foreground">
-                Super Characters
+                {selectedCharacter?.name || "Super Characters"}
               </h1>
               <p className="text-sm text-muted-foreground">
-                Hold <kbd className="px-2 py-1 text-xs rounded-lg bg-muted/80 font-mono text-foreground/80 border border-border/50">Cmd+Shift+Space</kbd> to dictate
+                {selectedCharacter ? (
+                  <span className="flex items-center gap-2">
+                    <span>{selectedCharacter.voice}</span>
+                    <span className="text-muted-foreground/50">|</span>
+                    <span>{selectedCharacter.model}</span>
+                  </span>
+                ) : (
+                  <>Hold <kbd className="px-2 py-1 text-xs rounded-lg bg-muted/80 font-mono text-foreground/80 border border-border/50">Cmd+Shift+Space</kbd> to dictate</>
+                )}
               </p>
             </div>
           </div>
@@ -302,6 +354,7 @@ export default function Home() {
         )}
         <AvatarCanvas
           ref={avatarRef}
+          avatarUrl={selectedCharacter?.avatarUrl}
           onLoaded={() => setIsAvatarLoading(false)}
           onError={(err) => { setIsAvatarLoading(false); setAvatarError(err); }}
         />
