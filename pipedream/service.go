@@ -7,39 +7,9 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"os"
 	"sync"
 	"time"
 )
-
-// #region agent log
-const debugLogPath = "/Users/amine/Projects/solo/super-characters/.cursor/debug.log"
-
-func debugLog(location, message string, data map[string]interface{}) {
-	entry := map[string]interface{}{
-		"location":  location,
-		"message":   message,
-		"data":      data,
-		"timestamp": time.Now().UnixMilli(),
-		"sessionId": "debug-session",
-	}
-	jsonBytes, _ := json.Marshal(entry)
-	f, err := os.OpenFile(debugLogPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err == nil {
-		f.Write(jsonBytes)
-		f.Write([]byte("\n"))
-		f.Close()
-	}
-}
-
-func minInt(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
-// #endregion
 
 const (
 	// API endpoints
@@ -98,25 +68,8 @@ func (s *Service) getAccessToken() (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	// #region agent log
-	debugLog("service.go:getAccessToken:entry", "Getting access token", map[string]interface{}{
-		"hypothesisId":    "A,B,C",
-		"hasCachedToken":  s.accessToken != "",
-		"clientIdPrefix":  s.config.ClientID[:minInt(10, len(s.config.ClientID))],
-		"projectId":       s.config.ProjectID,
-		"tokenURL":        tokenURL,
-	})
-	// #endregion
-
 	// Return cached token if still valid (with 1 minute buffer)
 	if s.accessToken != "" && time.Now().Add(time.Minute).Before(s.tokenExpiry) {
-		// #region agent log
-		debugLog("service.go:getAccessToken:cached", "Using cached token", map[string]interface{}{
-			"hypothesisId":      "C",
-			"tokenLength":       len(s.accessToken),
-			"tokenPrefix":       s.accessToken[:minInt(20, len(s.accessToken))],
-		})
-		// #endregion
 		return s.accessToken, nil
 	}
 
@@ -125,15 +78,6 @@ func (s *Service) getAccessToken() (string, error) {
 	data.Set("grant_type", "client_credentials")
 	data.Set("client_id", s.config.ClientID)
 	data.Set("client_secret", s.config.ClientSecret)
-
-	// #region agent log
-	debugLog("service.go:getAccessToken:request", "Requesting new token", map[string]interface{}{
-		"hypothesisId": "A,B",
-		"tokenURL":     tokenURL,
-		"grantType":    "client_credentials",
-		"contentType":  "application/x-www-form-urlencoded",
-	})
-	// #endregion
 
 	req, err := http.NewRequest("POST", tokenURL, bytes.NewBufferString(data.Encode()))
 	if err != nil {
@@ -149,14 +93,6 @@ func (s *Service) getAccessToken() (string, error) {
 
 	body, _ := io.ReadAll(resp.Body)
 
-	// #region agent log
-	debugLog("service.go:getAccessToken:response", "Token response received", map[string]interface{}{
-		"hypothesisId": "A,B,C",
-		"statusCode":   resp.StatusCode,
-		"bodyPreview":  string(body[:minInt(200, len(body))]),
-	})
-	// #endregion
-
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("token request failed with status %d: %s", resp.StatusCode, string(body))
 	}
@@ -169,17 +105,6 @@ func (s *Service) getAccessToken() (string, error) {
 	if err := json.Unmarshal(body, &tokenResp); err != nil {
 		return "", fmt.Errorf("failed to decode token response: %w", err)
 	}
-
-	// #region agent log
-	debugLog("service.go:getAccessToken:parsed", "Token parsed successfully", map[string]interface{}{
-		"hypothesisId":  "C",
-		"hasToken":      tokenResp.AccessToken != "",
-		"tokenLength":   len(tokenResp.AccessToken),
-		"tokenPrefix":   tokenResp.AccessToken[:minInt(20, len(tokenResp.AccessToken))],
-		"expiresIn":     tokenResp.ExpiresIn,
-		"tokenType":     tokenResp.TokenType,
-	})
-	// #endregion
 
 	s.accessToken = tokenResp.AccessToken
 	s.tokenExpiry = time.Now().Add(time.Duration(tokenResp.ExpiresIn) * time.Second)
@@ -209,17 +134,6 @@ func (s *Service) CreateConnectToken(externalUserID string) (*TokenResponse, err
 	// Connect API URL includes project ID in path: /v1/connect/{project_id}/tokens
 	reqURL := fmt.Sprintf("%s/%s/tokens", connectURL, s.config.ProjectID)
 
-	// #region agent log
-	debugLog("service.go:CreateConnectToken:request", "Creating connect token", map[string]interface{}{
-		"hypothesisId":    "G",
-		"reqURL":          reqURL,
-		"authType":        "Bearer",
-		"projectId":       s.config.ProjectID,
-		"environment":     s.config.Environment,
-		"externalUserID":  externalUserID,
-	})
-	// #endregion
-
 	req, err := http.NewRequest("POST", reqURL, bytes.NewBuffer(body))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
@@ -228,15 +142,6 @@ func (s *Service) CreateConnectToken(externalUserID string) (*TokenResponse, err
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 	req.Header.Set("X-PD-Environment", s.config.Environment)
 
-	// #region agent log
-	debugLog("service.go:CreateConnectToken:headers", "Request headers set", map[string]interface{}{
-		"hypothesisId":   "G",
-		"authType":       "Bearer",
-		"hasEnvironment": s.config.Environment != "",
-		"tokenPrefix":    accessToken[:minInt(20, len(accessToken))],
-	})
-	// #endregion
-
 	resp, err := s.client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create connect token: %w", err)
@@ -244,14 +149,6 @@ func (s *Service) CreateConnectToken(externalUserID string) (*TokenResponse, err
 	defer resp.Body.Close()
 
 	respBody, _ := io.ReadAll(resp.Body)
-
-	// #region agent log
-	debugLog("service.go:CreateConnectToken:response", "Create token response", map[string]interface{}{
-		"hypothesisId": "G",
-		"statusCode":   resp.StatusCode,
-		"bodyPreview":  string(respBody[:minInt(200, len(respBody))]),
-	})
-	// #endregion
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
 		return nil, fmt.Errorf("create token failed with status %d: %s", resp.StatusCode, string(respBody))
@@ -352,30 +249,12 @@ func (s *Service) ListConnectedAccounts(externalUserID string) ([]ConnectedAccou
 	// Connect API URL includes project ID in path: /v1/connect/{project_id}/accounts
 	reqURL := fmt.Sprintf("%s/%s/accounts?external_user_id=%s", connectURL, s.config.ProjectID, url.QueryEscape(externalUserID))
 
-	// #region agent log
-	debugLog("service.go:ListConnectedAccounts:request", "Listing connected accounts", map[string]interface{}{
-		"hypothesisId":    "G",
-		"reqURL":          reqURL,
-		"authType":        "Bearer",
-		"projectId":       s.config.ProjectID,
-		"environment":     s.config.Environment,
-	})
-	// #endregion
-
 	req, err := http.NewRequest("GET", reqURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 	req.Header.Set("X-PD-Environment", s.config.Environment)
-
-	// #region agent log
-	debugLog("service.go:ListConnectedAccounts:headers", "Request headers set", map[string]interface{}{
-		"hypothesisId":   "G",
-		"authType":       "Bearer",
-		"tokenPrefix":    accessToken[:minInt(20, len(accessToken))],
-	})
-	// #endregion
 
 	resp, err := s.client.Do(req)
 	if err != nil {
@@ -384,14 +263,6 @@ func (s *Service) ListConnectedAccounts(externalUserID string) ([]ConnectedAccou
 	defer resp.Body.Close()
 
 	respBody, _ := io.ReadAll(resp.Body)
-
-	// #region agent log
-	debugLog("service.go:ListConnectedAccounts:response", "List accounts response", map[string]interface{}{
-		"hypothesisId": "G",
-		"statusCode":   resp.StatusCode,
-		"bodyPreview":  string(respBody[:minInt(200, len(respBody))]),
-	})
-	// #endregion
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("list accounts failed with status %d: %s", resp.StatusCode, string(respBody))

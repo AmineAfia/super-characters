@@ -52,74 +52,26 @@ export function createConversationAgent(additionalTools?: Record<string, unknown
   });
 }
 
-// #region agent log - debug instrumentation
-function debugLog(location: string, message: string, data: Record<string, unknown>) {
-  fetch('http://127.0.0.1:7245/ingest/506e96e1-a135-4e8a-8d08-13cb65f0f430', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ location, message, data, timestamp: Date.now(), sessionId: 'debug-session' })
-  }).catch(() => {});
-}
-// #endregion
-
 /**
  * Create the conversation agent with MCP tools from connected apps
  * Async version that loads MCP tools before creating the agent
  */
 export async function createConversationAgentWithMCP() {
-  // #region agent log
-  debugLog('agent/index.ts:createConversationAgentWithMCP:start', 'Creating agent with MCP', {
-    hypothesisId: 'I',
-    mcpToolsLoaded,
-    cachedToolCount: Object.keys(cachedMCPTools).length,
-  });
-  // #endregion
-
   // Load MCP tools if not already loaded
   if (!mcpToolsLoaded) {
     try {
       const hasApps = await hasConnectedApps();
-      
-      // #region agent log
-      debugLog('agent/index.ts:createConversationAgentWithMCP:hasApps', 'Checked for connected apps', {
-        hypothesisId: 'I',
-        hasApps,
-      });
-      // #endregion
-
       if (hasApps) {
         console.log("[Agent] Loading MCP tools from connected apps...");
         cachedMCPTools = await loadMCPTools();
         console.log(`[Agent] Loaded ${Object.keys(cachedMCPTools).length} MCP tools`);
-        
-        // #region agent log
-        debugLog('agent/index.ts:createConversationAgentWithMCP:loaded', 'MCP tools loaded', {
-          hypothesisId: 'I',
-          toolCount: Object.keys(cachedMCPTools).length,
-          toolNames: Object.keys(cachedMCPTools),
-        });
-        // #endregion
       }
       mcpToolsLoaded = true;
     } catch (error) {
-      // #region agent log
-      debugLog('agent/index.ts:createConversationAgentWithMCP:error', 'Failed to load MCP tools', {
-        hypothesisId: 'I',
-        error: String(error),
-      });
-      // #endregion
       console.error("[Agent] Failed to load MCP tools:", error);
       mcpToolsLoaded = true; // Mark as loaded to prevent retry loops
     }
   }
-
-  // #region agent log
-  debugLog('agent/index.ts:createConversationAgentWithMCP:creating', 'Creating agent with tools', {
-    hypothesisId: 'I',
-    mcpToolCount: Object.keys(cachedMCPTools).length,
-    baseToolCount: Object.keys(agentTools).length,
-  });
-  // #endregion
 
   return createConversationAgent(cachedMCPTools);
 }
