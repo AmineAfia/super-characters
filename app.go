@@ -21,8 +21,9 @@ import (
 
 // App struct holds application state and dependencies
 type App struct {
-	app    *application.App
-	window *application.WebviewWindow
+	app           *application.App
+	window        *application.WebviewWindow
+	overlayWindow *application.WebviewWindow
 
 	// Transcription services
 	transcriptionService *transcription.TranscriptionService
@@ -38,6 +39,10 @@ type App struct {
 	// Recording state
 	isTranscribing bool
 	recordingMutex sync.Mutex
+
+	// Overlay state
+	overlayVisible     bool
+	pressAndTalkActive bool
 
 	// Conversation mode state
 	isConversationMode  bool
@@ -74,6 +79,167 @@ func (a *App) SetApp(app *application.App) {
 func (a *App) SetWindow(window *application.WebviewWindow) {
 	a.window = window
 }
+
+// SetOverlayWindow registers the overlay window
+func (a *App) SetOverlayWindow(window *application.WebviewWindow) {
+	a.overlayWindow = window
+}
+
+// #region Overlay Management
+
+// showOverlay shows the 3D character overlay window
+func (a *App) showOverlay() {
+	if a.overlayWindow == nil {
+		slog.Warn("overlay window not available")
+		return
+	}
+
+	a.overlayVisible = true
+
+	// Emit overlay show event
+	if a.app != nil {
+		a.app.Event.Emit("overlay:show", map[string]interface{}{
+			"state":       "recording",
+			"overlayMode": true,
+		})
+	}
+
+	// Position overlay at bottom-left of screen
+	a.positionOverlayBottomLeft(300, 350)
+	a.overlayWindow.Show()
+	// Explicitly set AlwaysOnTop after showing - required because Wails only sets
+	// window level on WindowDidBecomeKey event for hidden windows, but our overlay
+	// doesn't become the key window
+	a.overlayWindow.SetAlwaysOnTop(true)
+
+	slog.Info("overlay shown")
+}
+
+// hideOverlay hides the overlay window
+func (a *App) hideOverlay() {
+	if a.overlayWindow == nil {
+		return
+	}
+
+	a.overlayVisible = false
+
+	// Emit overlay hide event
+	if a.app != nil {
+		a.app.Event.Emit("overlay:hide", nil)
+	}
+
+	a.overlayWindow.Hide()
+	slog.Info("overlay hidden")
+}
+
+// positionOverlayBottomLeft positions the overlay at the bottom-left of the screen
+func (a *App) positionOverlayBottomLeft(width, height int) {
+	if a.overlayWindow == nil {
+		return
+	}
+
+	// Get target screen info
+	screenX, screenY, _, screenHeight := a.getScreenWorkArea()
+
+	// Calculate the desired position in logical coordinates (top-left origin)
+	// Position at bottom-left with 40px padding from the left and bottom
+	targetPosX := screenX + 40
+	targetPosY := screenY + screenHeight - height - 40
+
+	// Get the overlay's current screen info for scale factor
+	overlayScreen, err := a.overlayWindow.GetScreen()
+	if err != nil || overlayScreen == nil {
+		// Fallback: try to position directly (may not work correctly on Retina)
+		a.overlayWindow.SetPosition(targetPosX, targetPosY)
+		return
+	}
+
+	scaleFactor := overlayScreen.ScaleFactor
+	if scaleFactor < 1 {
+		scaleFactor = 1 // Safety fallback
+	}
+
+	// WORKAROUND for Wails coordinate scaling bug:
+	// Wails' SetPosition on macOS divides coordinates by scale factor.
+	// To get the correct position, we must multiply by scale factor.
+	adjustedX := int(float32(targetPosX) * scaleFactor)
+	adjustedY := int(float32(targetPosY) * scaleFactor)
+
+	a.overlayWindow.SetPosition(adjustedX, adjustedY)
+}
+
+// ResizeOverlay resizes the overlay window and re-positions it at the bottom-left
+func (a *App) ResizeOverlay(width int, height int) {
+	if a.overlayWindow == nil {
+		return
+	}
+
+	a.overlayWindow.SetSize(width, height)
+	// Re-position using the same bottom-left positioning
+	a.positionOverlayBottomLeft(width, height)
+}
+
+// getScreenWorkArea returns the work area (x, y, width, height) of the current screen
+func (a *App) getScreenWorkArea() (x, y, width, height int) {
+	// Get all screens first
+	screens := a.app.Screen.GetAll()
+
+	// If we have screens and a main window, find the screen containing the window
+	if len(screens) > 0 && a.window != nil {
+		wx, wy := a.window.Position()
+		ww, wh := a.window.Size()
+		// Use the center point of the window to determine which screen it's on
+		windowCenterX := wx + ww/2
+		windowCenterY := wy + wh/2
+
+		// Find which screen contains the window's center
+		for _, screen := range screens {
+			screenRight := screen.X + screen.Size.Width
+			screenBottom := screen.Y + screen.Size.Height
+
+			if windowCenterX >= screen.X && windowCenterX < screenRight &&
+				windowCenterY >= screen.Y && windowCenterY < screenBottom {
+				return screen.WorkArea.X, screen.WorkArea.Y, screen.WorkArea.Width, screen.WorkArea.Height
+			}
+		}
+
+		// If no screen contains the window center, try window.GetScreen() as fallback
+		screen, err := a.window.GetScreen()
+		if err == nil && screen != nil {
+			return screen.WorkArea.X, screen.WorkArea.Y, screen.WorkArea.Width, screen.WorkArea.Height
+		}
+	}
+
+	// If no screens available, try window.GetScreen() directly
+	if a.window != nil {
+		screen, err := a.window.GetScreen()
+		if err == nil && screen != nil {
+			return screen.WorkArea.X, screen.WorkArea.Y, screen.WorkArea.Width, screen.WorkArea.Height
+		}
+	}
+
+	// Use primary screen for overlay positioning
+	for _, screen := range screens {
+		if screen.IsPrimary {
+			return screen.WorkArea.X, screen.WorkArea.Y, screen.WorkArea.Width, screen.WorkArea.Height
+		}
+	}
+
+	// Fallback: Return first screen if no primary found
+	if len(screens) > 0 {
+		return screens[0].WorkArea.X, screens[0].WorkArea.Y, screens[0].WorkArea.Width, screens[0].WorkArea.Height
+	}
+
+	// Ultimate fallback: reasonable defaults
+	return 0, 0, 1920, 1080
+}
+
+// IsOverlayVisible returns whether the overlay is currently visible
+func (a *App) IsOverlayVisible() bool {
+	return a.overlayVisible
+}
+
+// #endregion Overlay Management
 
 // ServiceStartup is called when the application starts (Wails v3 service interface)
 func (a *App) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
@@ -150,24 +316,53 @@ func (a *App) ServiceShutdown() error {
 	return nil
 }
 
-// RegisterHotkeys sets up the global hotkey after the app window is ready
+// RegisterHotkeys sets up the global hotkeys after the app window is ready
 func (a *App) RegisterHotkeys() {
 	slog.Info("Registering global hotkeys")
 
-	// Default hotkey: Cmd+Shift+Space
-	hotkeyStr := "Cmd+Shift+Space"
+	// Default hold-to-talk hotkey: Ctrl+Option+Cmd (modifier-only)
+	holdToTalkHotkey := "Ctrl+Option+Cmd"
+
+	// Get press-and-talk hotkey from settings (defaults to Ctrl+Shift+Space)
+	pressAndTalkHotkey := ""
+	if a.settingsService != nil {
+		pressAndTalkHotkey = a.settingsService.GetPressAndTalkHotkey()
+	}
+
+	// Set up the press-and-talk toggle callback
+	// This is called when the hands-free (press-and-talk) hotkey is toggled
+	a.hotkeyService.SetHandsFreeCallback(a.onPressAndTalkToggle)
 
 	err := a.hotkeyService.StartWithRelease(
 		a.ctx,
-		hotkeyStr,
-		"", // No hands-free hotkey for now
+		holdToTalkHotkey,
+		pressAndTalkHotkey,
 		a.onHotkeyPressed,
 		a.onHotkeyReleased,
 	)
 	if err != nil {
 		slog.Error("failed to register hotkey", "error", err)
 	} else {
-		slog.Info("global hotkey registered", "hotkey", hotkeyStr)
+		slog.Info("global hotkeys registered", "holdToTalk", holdToTalkHotkey, "pressAndTalk", pressAndTalkHotkey)
+	}
+}
+
+// onPressAndTalkToggle handles the press-and-talk hotkey toggle
+// When enabled, shows overlay and starts recording
+// When disabled, stops recording and hides overlay
+func (a *App) onPressAndTalkToggle(enabled bool) {
+	slog.Info("press-and-talk toggled", "enabled", enabled)
+
+	if enabled {
+		// Show overlay and start recording
+		a.pressAndTalkActive = true
+		a.showOverlay()
+		go a.StartTranscription("en")
+	} else {
+		// Stop recording and hide overlay
+		a.pressAndTalkActive = false
+		go a.StopTranscription()
+		a.hideOverlay()
 	}
 }
 

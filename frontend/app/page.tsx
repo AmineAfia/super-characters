@@ -161,7 +161,7 @@ export default function Home() {
                   Accessibility permission required
                 </p>
                 <p className="text-xs text-amber-600/80 dark:text-amber-500/80">
-                  Grant permission to enable global hotkey (⌘+Shift+Space)
+                  Grant permission to enable global hotkey (⌃⌥⌘)
                 </p>
               </div>
               <Button 

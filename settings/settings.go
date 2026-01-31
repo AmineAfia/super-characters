@@ -10,9 +10,10 @@ import (
 
 // Settings holds application configuration.
 type Settings struct {
-	GeminiAPIKey      string `json:"geminiApiKey"`
-	ElevenLabsAPIKey  string `json:"elevenLabsApiKey"`
-	ElevenLabsVoiceID string `json:"elevenLabsVoiceId"`
+	GeminiAPIKey       string `json:"geminiApiKey"`
+	ElevenLabsAPIKey   string `json:"elevenLabsApiKey"`
+	ElevenLabsVoiceID  string `json:"elevenLabsVoiceId"`
+	PressAndTalkHotkey string `json:"pressAndTalkHotkey"`
 }
 
 // SettingsService manages persistent settings storage.
@@ -125,4 +126,23 @@ func (s *SettingsService) SetElevenLabsVoiceID(voiceID string) error {
 	s.mu.Unlock()
 
 	return s.save()
+}
+
+// SetPressAndTalkHotkey updates the press-and-talk hotkey.
+func (s *SettingsService) SetPressAndTalkHotkey(hotkey string) error {
+	s.mu.Lock()
+	s.settings.PressAndTalkHotkey = hotkey
+	s.mu.Unlock()
+
+	return s.save()
+}
+
+// GetPressAndTalkHotkey returns the press-and-talk hotkey with a default fallback.
+func (s *SettingsService) GetPressAndTalkHotkey() string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if s.settings.PressAndTalkHotkey == "" {
+		return "Ctrl+Shift+Space" // Default hotkey
+	}
+	return s.settings.PressAndTalkHotkey
 }

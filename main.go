@@ -56,10 +56,36 @@ func main() {
 		DevToolsEnabled: true,
 	})
 
-	// 5. Register Window
-	appService.SetWindow(mainWindow)
+	// 5. Create the Overlay Window (3D character, always-on-top, transparent)
+	overlayWindow := app.Window.NewWithOptions(application.WebviewWindowOptions{
+		Name:           "overlay",
+		Title:          "Super Characters Overlay",
+		Width:          300,
+		Height:         350,
+		Frameless:      true,
+		AlwaysOnTop:    true,
+		BackgroundType: application.BackgroundTypeTransparent,
+		URL:            "/overlay/",
+		Hidden:         true,
+		Mac: application.MacWindow{
+			TitleBar: application.MacTitleBar{
+				Hide: true,
+			},
+			Backdrop:      application.MacBackdropTransparent,
+			DisableShadow: true,
+			// Allow overlay to appear over fullscreen apps and on all Spaces
+			CollectionBehavior: application.MacWindowCollectionBehaviorFullScreenAuxiliary |
+				application.MacWindowCollectionBehaviorCanJoinAllSpaces |
+				application.MacWindowCollectionBehaviorIgnoresCycle,
+		},
+		DevToolsEnabled: true,
+	})
 
-	// 6. Create System Tray
+	// 6. Register Windows
+	appService.SetWindow(mainWindow)
+	appService.SetOverlayWindow(overlayWindow)
+
+	// 7. Create System Tray
 	systray := app.SystemTray.New()
 	systray.SetIcon(icon)
 
@@ -74,7 +100,7 @@ func main() {
 	})
 	systray.SetMenu(menu)
 
-	// 7. Run the Application (hotkeys are registered in ServiceStartup)
+	// 8. Run the Application (hotkeys are registered in ServiceStartup)
 	err := app.Run()
 	if err != nil {
 		log.Fatal(err)

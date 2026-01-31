@@ -80,6 +80,13 @@ export function IsConversationMode(): $CancellablePromise<boolean> {
 }
 
 /**
+ * IsOverlayVisible returns whether the overlay is currently visible
+ */
+export function IsOverlayVisible(): $CancellablePromise<boolean> {
+    return $Call.ByID(2490546543);
+}
+
+/**
  * IsReady returns whether the transcription service is initialized
  */
 export function IsReady(): $CancellablePromise<boolean> {
@@ -116,7 +123,7 @@ export function ProcessVoiceInput(text: string): $CancellablePromise<void> {
 }
 
 /**
- * RegisterHotkeys sets up the global hotkey after the app window is ready
+ * RegisterHotkeys sets up the global hotkeys after the app window is ready
  */
 export function RegisterHotkeys(): $CancellablePromise<void> {
     return $Call.ByID(1337292899);
@@ -127,6 +134,13 @@ export function RegisterHotkeys(): $CancellablePromise<void> {
  */
 export function RequestMicrophonePermission(): $CancellablePromise<void> {
     return $Call.ByID(3230311345);
+}
+
+/**
+ * ResizeOverlay resizes the overlay window and re-positions it at the bottom-left
+ */
+export function ResizeOverlay(width: number, height: number): $CancellablePromise<void> {
+    return $Call.ByID(2507787999, width, height);
 }
 
 /**
@@ -155,6 +169,13 @@ export function SetElevenLabsVoiceID(voiceID: string): $CancellablePromise<strin
  */
 export function SetGeminiAPIKey(key: string): $CancellablePromise<string> {
     return $Call.ByID(3562040091, key);
+}
+
+/**
+ * SetOverlayWindow registers the overlay window
+ */
+export function SetOverlayWindow(window: application$0.WebviewWindow | null): $CancellablePromise<void> {
+    return $Call.ByID(2833066025, window);
 }
 
 /**

@@ -13,6 +13,7 @@ export class Settings {
     "geminiApiKey": string;
     "elevenLabsApiKey": string;
     "elevenLabsVoiceId": string;
+    "pressAndTalkHotkey": string;
 
     /** Creates a new Settings instance. */
     constructor($$source: Partial<Settings> = {}) {
@@ -24,6 +25,9 @@ export class Settings {
         }
         if (!("elevenLabsVoiceId" in $$source)) {
             this["elevenLabsVoiceId"] = "";
+        }
+        if (!("pressAndTalkHotkey" in $$source)) {
+            this["pressAndTalkHotkey"] = "";
         }
 
         Object.assign(this, $$source);
