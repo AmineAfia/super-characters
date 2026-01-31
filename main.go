@@ -20,8 +20,8 @@ func main() {
 
 	// 2. Create the Application
 	app := application.New(application.Options{
-		Name:        "super-characters",
-		Description: "Super Characters",
+		Name:        "Super Characters",
+		Description: "Speech-to-Text Transcription",
 		Services: []application.Service{
 			application.NewService(appService),
 		},
@@ -40,8 +40,8 @@ func main() {
 	mainWindow := app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Name:           "main",
 		Title:          "Super Characters",
-		Width:          1024,
-		Height:         768,
+		Width:          900,
+		Height:         700,
 		MinWidth:       400,
 		MinHeight:      300,
 		Frameless:      true,
@@ -74,9 +74,10 @@ func main() {
 	})
 	systray.SetMenu(menu)
 
-	// 7. Run the Application
+	// 7. Run the Application (hotkeys are registered in ServiceStartup)
 	err := app.Run()
 	if err != nil {
 		log.Fatal(err)
 	}
 }
+

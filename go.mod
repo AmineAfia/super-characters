@@ -2,7 +2,13 @@ module super-characters
 
 go 1.25
 
-require github.com/wailsapp/wails/v3 v3.0.0-alpha.64
+require (
+	github.com/gen2brain/malgo v0.11.24
+	github.com/ggerganov/whisper.cpp/bindings/go v0.0.0-00010101000000-000000000000
+	github.com/wailsapp/wails/v3 v3.0.0-alpha.64
+)
+
+replace github.com/ggerganov/whisper.cpp/bindings/go => ./whisper.cpp/bindings/go
 
 require (
 	dario.cat/mergo v1.0.2 // indirect
