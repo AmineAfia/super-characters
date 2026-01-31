@@ -14,6 +14,9 @@ import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Cr
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
 import * as application$0 from "../github.com/wailsapp/wails/v3/pkg/application/models.ts";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as settings$0 from "./settings/models.ts";
 
 /**
  * CheckAccessibility checks if accessibility permission is granted
@@ -47,10 +50,33 @@ export function GetLanguages(): $CancellablePromise<string[]> {
 }
 
 /**
+ * GetSettings returns the current application settings.
+ */
+export function GetSettings(): $CancellablePromise<settings$0.Settings> {
+    return $Call.ByID(2554697378).then(($result: any) => {
+        return $$createType1($result);
+    });
+}
+
+/**
  * Greet returns a greeting message - example method exposed to frontend
  */
 export function Greet(name: string): $CancellablePromise<string> {
     return $Call.ByID(2659711170, name);
+}
+
+/**
+ * IsConversationConfigured returns whether the voice chat APIs are configured.
+ */
+export function IsConversationConfigured(): $CancellablePromise<boolean> {
+    return $Call.ByID(1439924430);
+}
+
+/**
+ * IsConversationMode returns whether conversation mode is active.
+ */
+export function IsConversationMode(): $CancellablePromise<boolean> {
+    return $Call.ByID(1515400133);
 }
 
 /**
@@ -82,6 +108,14 @@ export function OpenMicrophoneSettings(): $CancellablePromise<void> {
 }
 
 /**
+ * ProcessVoiceInput takes a transcribed user message, sends it to the LLM,
+ * synthesizes the response with TTS, and emits events for the frontend.
+ */
+export function ProcessVoiceInput(text: string): $CancellablePromise<void> {
+    return $Call.ByID(3379769464, text);
+}
+
+/**
  * RegisterHotkeys sets up the global hotkey after the app window is ready
  */
 export function RegisterHotkeys(): $CancellablePromise<void> {
@@ -103,6 +137,27 @@ export function SetApp(app: application$0.App | null): $CancellablePromise<void>
 }
 
 /**
+ * SetElevenLabsAPIKey updates the ElevenLabs API key in settings and service.
+ */
+export function SetElevenLabsAPIKey(key: string): $CancellablePromise<string> {
+    return $Call.ByID(411033165, key);
+}
+
+/**
+ * SetElevenLabsVoiceID updates the ElevenLabs voice ID in settings and service.
+ */
+export function SetElevenLabsVoiceID(voiceID: string): $CancellablePromise<string> {
+    return $Call.ByID(1488636969, voiceID);
+}
+
+/**
+ * SetGeminiAPIKey updates the Gemini API key in settings and service.
+ */
+export function SetGeminiAPIKey(key: string): $CancellablePromise<string> {
+    return $Call.ByID(3562040091, key);
+}
+
+/**
  * SetSelectedLanguage sets the language for transcription
  */
 export function SetSelectedLanguage(language: string): $CancellablePromise<void> {
@@ -117,10 +172,26 @@ export function SetWindow(window: application$0.WebviewWindow | null): $Cancella
 }
 
 /**
+ * StartConversation enters conversation mode. In this mode, hotkey-triggered
+ * transcriptions are routed to the LLM for a conversational reply, which is
+ * then synthesized to speech via TTS and sent to the frontend for playback.
+ */
+export function StartConversation(): $CancellablePromise<string> {
+    return $Call.ByID(81776248);
+}
+
+/**
  * StartTranscription begins recording and transcription
  */
 export function StartTranscription(language: string): $CancellablePromise<string> {
     return $Call.ByID(805476209, language);
+}
+
+/**
+ * StopConversation exits conversation mode and clears history.
+ */
+export function StopConversation(): $CancellablePromise<string> {
+    return $Call.ByID(2630667022);
 }
 
 /**
@@ -132,3 +203,4 @@ export function StopTranscription(): $CancellablePromise<string> {
 
 // Private type creation functions
 const $$createType0 = $Create.Array($Create.Any);
+const $$createType1 = settings$0.Settings.createFrom;

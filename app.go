@@ -2,13 +2,18 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
+	"fmt"
 	"log/slog"
 	"sync"
 	"time"
 
 	"super-characters/audio"
+	"super-characters/elevenlabs"
+	"super-characters/gemini"
 	"super-characters/hotkey"
 	"super-characters/permissions"
+	"super-characters/settings"
 	"super-characters/transcription"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -25,9 +30,18 @@ type App struct {
 	hotkeyService        *hotkey.HotkeyService
 	permissionsService   *permissions.PermissionsService
 
+	// Conversation mode services
+	geminiService     *gemini.GeminiService
+	elevenlabsService *elevenlabs.ElevenLabsService
+	settingsService   *settings.SettingsService
+
 	// Recording state
 	isTranscribing bool
 	recordingMutex sync.Mutex
+
+	// Conversation mode state
+	isConversationMode  bool
+	conversationHistory []gemini.ChatMessage
 
 	// Context for transcription
 	ctx    context.Context
@@ -37,11 +51,16 @@ type App struct {
 // NewApp creates a new App instance
 func NewApp() *App {
 	permSvc, _ := permissions.NewPermissionsService()
+	settingsSvc, _ := settings.NewSettingsService()
+
 	return &App{
 		transcriptionService: transcription.NewTranscriptionService(),
 		audioService:         audio.NewAudioService(),
 		hotkeyService:        hotkey.NewHotkeyService(),
 		permissionsService:   permSvc,
+		geminiService:        gemini.NewGeminiService(),
+		elevenlabsService:    elevenlabs.NewElevenLabsService(),
+		settingsService:      settingsSvc,
 	}
 }
 
@@ -60,6 +79,24 @@ func (a *App) SetWindow(window *application.WebviewWindow) {
 func (a *App) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
 	a.ctx = ctx
 	slog.Info("App service starting up")
+
+	// Configure conversation services from settings
+	if a.settingsService != nil {
+		currentSettings := a.settingsService.GetSettings()
+		if a.geminiService != nil && currentSettings.GeminiAPIKey != "" {
+			a.geminiService.SetAPIKey(currentSettings.GeminiAPIKey)
+			slog.Info("Gemini service configured from settings")
+		}
+		if a.elevenlabsService != nil {
+			if currentSettings.ElevenLabsAPIKey != "" {
+				a.elevenlabsService.SetAPIKey(currentSettings.ElevenLabsAPIKey)
+				slog.Info("ElevenLabs service configured from settings")
+			}
+			if currentSettings.ElevenLabsVoiceID != "" {
+				a.elevenlabsService.SetVoiceID(currentSettings.ElevenLabsVoiceID)
+			}
+		}
+	}
 
 	// Initialize transcription service
 	go func() {
@@ -220,6 +257,13 @@ func (a *App) StopTranscription() string {
 	}
 
 	slog.Info("transcription complete", "text", text, "language", lang)
+
+	// In conversation mode, route the transcription to the voice chat pipeline
+	if a.isConversationMode && text != "" {
+		go a.ProcessVoiceInput(text)
+		return text
+	}
+
 	return text
 }
 
@@ -302,3 +346,181 @@ func (a *App) OpenMicrophoneSettings() {
 		a.permissionsService.OpenMicrophoneSettings()
 	}
 }
+
+// #region Conversation Mode (Voice Chat with 3D Avatar)
+
+// StartConversation enters conversation mode. In this mode, hotkey-triggered
+// transcriptions are routed to the LLM for a conversational reply, which is
+// then synthesized to speech via TTS and sent to the frontend for playback.
+func (a *App) StartConversation() string {
+	a.isConversationMode = true
+	a.conversationHistory = []gemini.ChatMessage{
+		{Role: "system", Content: gemini.ConversationSystemPrompt},
+	}
+
+	slog.Info("[Conversation] Mode started")
+	return "Conversation started"
+}
+
+// StopConversation exits conversation mode and clears history.
+func (a *App) StopConversation() string {
+	a.isConversationMode = false
+	a.conversationHistory = nil
+	slog.Info("[Conversation] Mode stopped")
+	return "Conversation stopped"
+}
+
+// IsConversationMode returns whether conversation mode is active.
+func (a *App) IsConversationMode() bool {
+	return a.isConversationMode
+}
+
+// ProcessVoiceInput takes a transcribed user message, sends it to the LLM,
+// synthesizes the response with TTS, and emits events for the frontend.
+func (a *App) ProcessVoiceInput(text string) {
+	if text == "" {
+		return
+	}
+
+	slog.Info("[Conversation] Processing user input", "text", text)
+
+	// Emit user message to frontend
+	if a.app != nil {
+		a.app.Event.Emit("conversation:user-message", map[string]interface{}{
+			"text": text,
+		})
+	}
+
+	// Append user message to history
+	a.conversationHistory = append(a.conversationHistory, gemini.ChatMessage{
+		Role:    "user",
+		Content: text,
+	})
+
+	// Trim history to max turns (keep system prompt + last N turn pairs)
+	maxMessages := 1 + gemini.MaxConversationTurns*2 // system + N*(user+assistant)
+	if len(a.conversationHistory) > maxMessages {
+		// Keep system prompt and trim oldest turns
+		a.conversationHistory = append(
+			a.conversationHistory[:1],
+			a.conversationHistory[len(a.conversationHistory)-maxMessages+1:]...,
+		)
+	}
+
+	// Signal thinking
+	if a.app != nil {
+		a.app.Event.Emit("conversation:thinking", nil)
+	}
+
+	// Call Gemini
+	if a.geminiService == nil || !a.geminiService.IsConfigured() {
+		a.emitConversationError("Gemini API key not configured")
+		return
+	}
+
+	response, err := a.geminiService.Chat(a.conversationHistory)
+	if err != nil {
+		a.emitConversationError(fmt.Sprintf("Gemini error: %v", err))
+		return
+	}
+
+	// Append assistant response to history
+	a.conversationHistory = append(a.conversationHistory, gemini.ChatMessage{
+		Role:    "assistant",
+		Content: response,
+	})
+
+	// Synthesize TTS via ElevenLabs
+	var audioBase64 string
+	if a.elevenlabsService != nil && a.elevenlabsService.IsConfigured() {
+		mp3Bytes, err := a.elevenlabsService.Synthesize(response)
+		if err != nil {
+			slog.Warn("[Conversation] ElevenLabs TTS error (falling back to text-only)", "error", err)
+		} else {
+			audioBase64 = base64.StdEncoding.EncodeToString(mp3Bytes)
+		}
+	} else {
+		slog.Info("[Conversation] ElevenLabs not configured, sending text-only response")
+	}
+
+	// Emit response to frontend
+	if a.app != nil {
+		payload := map[string]interface{}{
+			"text": response,
+		}
+		if audioBase64 != "" {
+			payload["audio"] = audioBase64
+		}
+		a.app.Event.Emit("conversation:response", payload)
+	}
+
+	slog.Info("[Conversation] Response sent", "text", response, "hasAudio", audioBase64 != "")
+}
+
+// emitConversationError sends an error event to the frontend.
+func (a *App) emitConversationError(msg string) {
+	slog.Error("[Conversation] Error", "message", msg)
+	if a.app != nil {
+		a.app.Event.Emit("conversation:error", map[string]interface{}{
+			"error": msg,
+		})
+	}
+}
+
+// IsConversationConfigured returns whether the voice chat APIs are configured.
+func (a *App) IsConversationConfigured() bool {
+	return a.geminiService != nil && a.geminiService.IsConfigured()
+}
+
+// #endregion Conversation Mode
+
+// #region Settings API
+
+// GetSettings returns the current application settings.
+func (a *App) GetSettings() settings.Settings {
+	if a.settingsService == nil {
+		return settings.Settings{}
+	}
+	return a.settingsService.GetSettings()
+}
+
+// SetGeminiAPIKey updates the Gemini API key in settings and service.
+func (a *App) SetGeminiAPIKey(key string) string {
+	if a.geminiService != nil {
+		a.geminiService.SetAPIKey(key)
+	}
+	if a.settingsService != nil {
+		if err := a.settingsService.SetGeminiAPIKey(key); err != nil {
+			return fmt.Sprintf("Failed to save: %v", err)
+		}
+	}
+	return ""
+}
+
+// SetElevenLabsAPIKey updates the ElevenLabs API key in settings and service.
+func (a *App) SetElevenLabsAPIKey(key string) string {
+	if a.elevenlabsService != nil {
+		a.elevenlabsService.SetAPIKey(key)
+	}
+	if a.settingsService != nil {
+		if err := a.settingsService.SetElevenLabsAPIKey(key); err != nil {
+			return fmt.Sprintf("Failed to save: %v", err)
+		}
+	}
+	return ""
+}
+
+// SetElevenLabsVoiceID updates the ElevenLabs voice ID in settings and service.
+func (a *App) SetElevenLabsVoiceID(voiceID string) string {
+	if a.elevenlabsService != nil {
+		a.elevenlabsService.SetVoiceID(voiceID)
+	}
+	if a.settingsService != nil {
+		if err := a.settingsService.SetElevenLabsVoiceID(voiceID); err != nil {
+			return fmt.Sprintf("Failed to save: %v", err)
+		}
+	}
+	return ""
+}
+
+// #endregion Settings API

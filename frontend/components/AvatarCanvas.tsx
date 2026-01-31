@@ -33,7 +33,8 @@ interface AvatarCanvasProps {
 }
 
 const DEFAULT_AVATAR_URL =
-  'https://models.readyplayer.me/64bfa15f0e72c63d7c3934a6.glb?morphTargets=ARKit,Oculus+Visemes,mouthOpen,mouthSmile,eyesClosed,eyesLookUp,eyesLookDown&textureSizeLimit=1024&textureFormat=png'
+    'https://models.readyplayer.me/64bfa15f0e72c63d7c3934a6.glb?morphTargets=ARKit,Oculus+Visemes,mouthOpen,mouthSmile,eyesClosed,eyesLookUp,eyesLookDown&textureSizeLimit=1024&textureFormat=png'
+//  const DEFAULT_AVATAR_URL = 'https://models.readyplayer.me/697e18e1b0af132e8c83d2df.glb'
 
 const AvatarCanvas = forwardRef<AvatarCanvasHandle, AvatarCanvasProps>(
   ({ avatarUrl, onLoaded, onError }, ref) => {

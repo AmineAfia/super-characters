@@ -10,6 +10,8 @@
   },
   "dependencies": {
     "@met4citizen/talkinghead": "^1.7.0",
+    "@radix-ui/react-dialog": "^1.1.15",
+    "@radix-ui/react-label": "^2.1.8",
     "@radix-ui/react-slot": "^1.2.4",
     "@wailsio/runtime": "^3.0.0-alpha.64",
     "class-variance-authority": "^0.7.1",
@@ -24,11 +26,11 @@
     "three": "^0.182.0"
   },
   "devDependencies": {
-    "@types/three": "^0.182.0",
     "@tailwindcss/postcss": "^4.1.13",
     "@types/node": "^22.15.21",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.1",
+    "@types/three": "^0.182.0",
     "eslint": "^9.39.2",
     "eslint-config-next": "^16.1.1",
     "postcss": "^8.5.6",
