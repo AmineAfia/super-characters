@@ -30,8 +30,8 @@ export default function RootLayout({
       >
         <ThemeProvider
           attribute="class"
-          defaultTheme="system"
-          enableSystem
+          defaultTheme="light"
+          enableSystem={false}
           disableTransitionOnChange
         >
           <div className="main-layout flex flex-col h-screen overflow-hidden bg-transparent border-0 outline-none ring-0">

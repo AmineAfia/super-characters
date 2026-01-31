@@ -77,6 +77,31 @@ export default function Home() {
     checkConversationConfig();
   }, [isSettingsOpen]); // Re-check when settings modal closes
 
+  // Auto-activate conversation mode when hotkey is pressed
+  useEffect(() => {
+    let unsubscribe: (() => void) | undefined;
+
+    const setup = async () => {
+      const { Events } = await import("@wailsio/runtime");
+
+      unsubscribe = Events.On("overlay:show", async () => {
+        // Only auto-start if conversation is configured and not already active
+        if (isConversationConfigured && !isConversationActive) {
+          // Resume AudioContext during this user gesture so that
+          // WKWebView on macOS allows audio playback later when TTS responds.
+          await avatarRef.current?.resumeAudio();
+          await startConversation();
+        }
+      });
+    };
+
+    setup();
+
+    return () => {
+      unsubscribe?.();
+    };
+  }, [isConversationConfigured, isConversationActive, startConversation]);
+
   // Check permissions on mount
   useEffect(() => {
     const checkPermissions = async () => {
@@ -132,17 +157,6 @@ export default function Home() {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages, transcriptionTranscript, conversation, conversationTranscript, isConversationActive]);
-
-  const handleToggleConversation = useCallback(async () => {
-    if (isConversationActive) {
-      await stopConversation();
-    } else {
-      // Resume AudioContext during this user gesture (click) so that
-      // WKWebView on macOS allows audio playback later when TTS responds.
-      await avatarRef.current?.resumeAudio();
-      await startConversation();
-    }
-  }, [isConversationActive, startConversation, stopConversation]);
 
   // Determine current transcript based on mode
   const currentTranscript = isConversationActive ? conversationTranscript : transcriptionTranscript;
@@ -233,11 +247,19 @@ export default function Home() {
           
           {/* Status indicator */}
           <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsSettingsOpen(true)}
+              className="text-muted-foreground hover:text-foreground rounded-xl"
+            >
+              <Settings className="h-4 w-4" />
+            </Button>
             {(isConversationActive ? conversation.length > 0 : messages.length > 0) && (
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={clearMessages}
+                onClick={isConversationActive ? clearConversation : clearMessages}
                 className="text-muted-foreground hover:text-foreground rounded-xl"
               >
                 <Trash2 className="h-4 w-4" />
@@ -319,67 +341,9 @@ export default function Home() {
       {/* Chat Messages */}
       <div className="flex-1 overflow-y-auto p-6 relative z-10">
         <div className="max-w-3xl mx-auto space-y-4">
-          {messages.length === 0 && !isRecording && !currentTranscript && (
-            <div className="flex flex-col items-center justify-center h-64 text-center gap-5">
-              <div className="p-5 rounded-3xl bg-lavender-light/50 dark:bg-muted/30 shadow-soft">
-                <MessageSquare className="h-10 w-10 text-primary/60" />
-              </div>
-              <div className="space-y-2">
-                <p className="text-base font-semibold text-foreground">
-                  No transcriptions yet
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Press and hold the hotkey to start dictating
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Transcription messages */}
-          {messages.map((message) => (
-            <div key={message.id} className="flex justify-start">
-              <div className="max-w-[85%] rounded-3xl px-5 py-4 bg-card shadow-soft border border-border/30 hover:shadow-soft-lg transition-shadow duration-200">
-                <p className="text-sm leading-relaxed text-foreground">{message.text}</p>
-                <p className="text-[10px] text-muted-foreground mt-2 font-medium">
-                  {new Date(message.timestamp).toLocaleTimeString()}
-                </p>
-              </div>
-            </div>
-          ))}
-
-          {/* Current transcript (while recording) */}
-          {currentTranscript && (
-            <div className="flex justify-start">
-              <div className="max-w-[85%] rounded-3xl px-5 py-4 bg-primary/10 text-foreground/80 italic border-2 border-dashed border-primary/30">
-                <p className="text-sm leading-relaxed">{currentTranscript}</p>
-              </div>
-            </div>
-          )}
-
-          {/* Typing indicator (while recording but no transcript yet) */}
-          {isRecording && !currentTranscript && (
-            <div className="flex justify-start">
-              <div className="rounded-3xl px-5 py-4 bg-primary/20 shadow-glow border border-primary/30">
-                <div className="flex items-center gap-3">
-                  <Mic className="h-4 w-4 text-primary animate-pulse-soft" />
-                  <div className="flex gap-1.5">
-                    <span 
-                      className="w-2 h-2 bg-primary rounded-full animate-bounce" 
-                      style={{ animationDelay: '0ms' }} 
-                    />
-                    <span 
-                      className="w-2 h-2 bg-primary rounded-full animate-bounce" 
-                      style={{ animationDelay: '150ms' }} 
-                    />
-                    <span 
-                      className="w-2 h-2 bg-primary rounded-full animate-bounce" 
-                      style={{ animationDelay: '300ms' }} 
-                    />
-                  </div>
-                  <span className="text-xs font-medium text-foreground/70 ml-1">Listening...</span>
-                </div>
-              )}
-
+          {isConversationActive ? (
+            <>
+              {/* Conversation Mode */}
               {conversation.map((turn, i) => (
                 <div
                   key={i}
