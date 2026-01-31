@@ -56,6 +56,7 @@ export default function Home() {
     isThinking,
     conversation,
     currentTranscript: conversationTranscript,
+    currentResponse,
     startConversation,
     stopConversation,
     clearConversation,
@@ -370,16 +371,23 @@ export default function Home() {
                 </div>
               )}
 
-              {/* Thinking indicator */}
+              {/* Streaming response or thinking indicator */}
               {isThinking && (
                 <div className="flex justify-start">
-                  <div className="rounded-2xl px-4 py-2.5 bg-muted">
-                    <div className="flex gap-1">
-                      <span className="w-2 h-2 bg-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                      <span className="w-2 h-2 bg-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                      <span className="w-2 h-2 bg-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                  {currentResponse ? (
+                    <div className="max-w-[80%] rounded-2xl px-4 py-2.5 text-sm bg-muted text-foreground">
+                      {currentResponse}
+                      <span className="inline-block w-1.5 h-4 ml-1 bg-foreground/60 animate-pulse" />
                     </div>
-                  </div>
+                  ) : (
+                    <div className="rounded-2xl px-4 py-2.5 bg-muted">
+                      <div className="flex gap-1">
+                        <span className="w-2 h-2 bg-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <span className="w-2 h-2 bg-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <span className="w-2 h-2 bg-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 

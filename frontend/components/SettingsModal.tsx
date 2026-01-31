@@ -44,6 +44,12 @@ export default function SettingsModal({ open, onOpenChange }: SettingsModalProps
       // Load silence duration separately (has default handling)
       const duration = await GetSilenceDurationMs()
       setSilenceDurationMs(duration || 300)
+
+      // Sync Gemini API key to localStorage for frontend agent
+      if (settings.geminiApiKey) {
+        const { setGeminiApiKey: setLocalStorageKey } = await import("@/lib/agent/config")
+        setLocalStorageKey(settings.geminiApiKey)
+      }
     } catch (e) {
       console.error("Failed to load settings:", e)
     }
@@ -58,11 +64,15 @@ export default function SettingsModal({ open, onOpenChange }: SettingsModalProps
         "@/bindings/super-characters/app"
       )
 
-      // Save each setting
+      // Save each setting to Go backend
       await SetGeminiAPIKey(geminiApiKey)
       await SetElevenLabsAPIKey(elevenLabsApiKey)
       await SetElevenLabsVoiceID(elevenLabsVoiceId)
       await SetSilenceDurationMs(silenceDurationMs)
+
+      // Also save Gemini API key to localStorage for frontend agent
+      const { setGeminiApiKey: setLocalStorageKey } = await import("@/lib/agent/config")
+      setLocalStorageKey(geminiApiKey)
 
       setSaveSuccess(true)
       setTimeout(() => {

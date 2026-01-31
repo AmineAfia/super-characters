@@ -490,11 +490,8 @@ func (a *App) StopTranscription() string {
 
 	slog.Info("transcription complete", "text", text, "language", lang)
 
-	// In conversation mode, route the transcription to the voice chat pipeline
-	if a.isConversationMode && text != "" {
-		go a.ProcessVoiceInput(text)
-		return text
-	}
+	// Note: transcription-complete event is already emitted by TranscriptionService.Process()
+	// The frontend AI SDK agent listens for that event and handles LLM processing
 
 	return text
 }
@@ -652,17 +649,14 @@ func (a *App) processContinuousSpeech(samples []float32) {
 
 	slog.Info("[ContinuousMode] Transcribed", "text", text, "language", lang)
 
-	// Update state to speaking
-	a.continuousStateMutex.Lock()
-	a.continuousState = ConversationStateSpeaking
-	a.continuousStateMutex.Unlock()
+	// Note: transcription-complete event is already emitted by TranscriptionService.Process()
+	// The frontend AI SDK agent listens for that event and handles LLM processing
 
-	// Process through conversation pipeline (this will emit events)
-	a.processConversationWithCallback(text, func() {
-		// Called when TTS playback is expected to complete
-		// Resume listening for the next turn
-		a.resumeListening()
-	})
+	// Keep VAD paused - frontend will call ResumeListening after TTS completes
+	// Update state to processing (frontend is handling it)
+	a.continuousStateMutex.Lock()
+	a.continuousState = ConversationStateProcessing
+	a.continuousStateMutex.Unlock()
 }
 
 // processConversationWithCallback processes a conversation turn and calls the callback when done
@@ -803,6 +797,33 @@ func (a *App) IsContinuousMode() bool {
 	a.continuousStateMutex.Lock()
 	defer a.continuousStateMutex.Unlock()
 	return a.continuousMode
+}
+
+// PauseListening pauses the VAD to prevent picking up TTS audio
+// Called by frontend when agent starts speaking
+func (a *App) PauseListening() {
+	if a.vadService != nil {
+		a.vadService.Pause()
+		slog.Info("[ContinuousMode] Listening paused by frontend")
+	}
+}
+
+// ResumeListening resumes the VAD after TTS playback is complete
+// Called by frontend when agent finishes speaking
+func (a *App) ResumeListening() {
+	if a.vadService != nil {
+		a.vadService.Resume()
+		slog.Info("[ContinuousMode] Listening resumed by frontend")
+	}
+
+	// Update state and emit event for overlay
+	a.continuousStateMutex.Lock()
+	a.continuousState = ConversationStateListening
+	a.continuousStateMutex.Unlock()
+
+	if a.app != nil {
+		a.app.Event.Emit("conversation:listening-resumed", nil)
+	}
 }
 
 // #endregion Continuous Conversation Mode
@@ -1080,3 +1101,36 @@ func (a *App) GetSilenceDurationMs() int {
 }
 
 // #endregion Settings API
+
+// #region TTS API
+
+// SynthesizeSpeech takes text and returns base64-encoded audio.
+// This is used by the frontend agent to synthesize speech independently
+// of the conversation flow.
+func (a *App) SynthesizeSpeech(text string) (string, error) {
+	if text == "" {
+		return "", fmt.Errorf("empty text provided")
+	}
+
+	if a.elevenlabsService == nil || !a.elevenlabsService.IsConfigured() {
+		return "", fmt.Errorf("ElevenLabs not configured")
+	}
+
+	mp3Bytes, err := a.elevenlabsService.Synthesize(text)
+	if err != nil {
+		slog.Error("[TTS] Synthesis failed", "error", err)
+		return "", fmt.Errorf("synthesis failed: %w", err)
+	}
+
+	audioBase64 := base64.StdEncoding.EncodeToString(mp3Bytes)
+	slog.Info("[TTS] Synthesized speech", "textLength", len(text), "audioBytes", len(mp3Bytes))
+
+	return audioBase64, nil
+}
+
+// IsTTSConfigured returns whether the TTS service (ElevenLabs) is configured.
+func (a *App) IsTTSConfigured() bool {
+	return a.elevenlabsService != nil && a.elevenlabsService.IsConfigured()
+}
+
+// #endregion TTS API

@@ -15,13 +15,16 @@ export interface ConversationState {
   isSpeechDetected: boolean
   conversation: ConversationTurn[]
   currentTranscript: string
+  currentResponse: string
   error: string | null
+  useAgentMode: boolean
 }
 
 export interface ConversationActions {
   startConversation: () => Promise<void>
   stopConversation: () => Promise<void>
   clearConversation: () => void
+  setAgentMode: (enabled: boolean) => void
 }
 
 export interface ConversationAudio {
@@ -41,10 +44,161 @@ export function useConversation(options?: UseConversationOptions): ConversationS
   const [isSpeechDetected, setIsSpeechDetected] = useState(false)
   const [conversation, setConversation] = useState<ConversationTurn[]>([])
   const [currentTranscript, setCurrentTranscript] = useState("")
+  const [currentResponse, setCurrentResponse] = useState("")
   const [error, setError] = useState<string | null>(null)
+  const [useAgentMode, setUseAgentMode] = useState(true) // Default to agent mode
 
   const onAudioReceivedRef = useRef(options?.onAudioReceived)
   onAudioReceivedRef.current = options?.onAudioReceived
+
+  // Ref to track conversation history for agent
+  const conversationHistoryRef = useRef<ConversationTurn[]>([])
+
+  // Process user input through the AI SDK agent
+  const processWithAgent = useCallback(async (text: string) => {
+    if (!text.trim()) return
+
+    setIsThinking(true)
+    setCurrentResponse("")
+    setError(null)
+
+    // Pause listening while processing to avoid picking up TTS
+    try {
+      const { PauseListening } = await import("@/bindings/super-characters/app")
+      await PauseListening()
+    } catch (e) {
+      console.warn("[useConversation] Failed to pause listening:", e)
+    }
+
+    // Add user message to conversation
+    const userTurn: ConversationTurn = { role: "user", text }
+    setConversation((prev) => [...prev, userTurn])
+    conversationHistoryRef.current = [...conversationHistoryRef.current, userTurn]
+
+    try {
+      // Dynamically import agent to avoid SSR issues
+      const { createConversationAgent, isAgentConfigured } = await import("@/lib/agent")
+
+      if (!isAgentConfigured()) {
+        throw new Error("Gemini API key not configured. Please add it in Settings.")
+      }
+
+      // Create agent and build messages from conversation history
+      const agent = createConversationAgent()
+      
+      // Format as proper messages for the AI SDK
+      const messages = conversationHistoryRef.current.map((m) => ({
+        role: m.role,
+        content: m.text,
+      }))
+
+      // Emit conversation:thinking event for overlay window
+      const { Events } = await import("@wailsio/runtime")
+      Events.Emit("conversation:thinking")
+
+      // Stream the response using messages format
+      const result = await agent.stream({ messages })
+
+      let fullText = ""
+      for await (const chunk of result.textStream) {
+        fullText += chunk
+        setCurrentResponse(fullText)
+      }
+
+      setCurrentResponse("")
+      setIsThinking(false)
+
+      // Add assistant response to conversation
+      const assistantTurn: ConversationTurn = { role: "assistant", text: fullText }
+      setConversation((prev) => [...prev, assistantTurn])
+      conversationHistoryRef.current = [...conversationHistoryRef.current, assistantTurn]
+
+      // Synthesize speech using Go backend
+      try {
+        const { SynthesizeSpeech, IsTTSConfigured, ResumeListening } = await import("@/bindings/super-characters/app")
+        
+        const ttsConfigured = await IsTTSConfigured()
+        if (ttsConfigured) {
+          const audioBase64 = await SynthesizeSpeech(fullText)
+          
+          // Emit conversation:response event for overlay window to receive
+          // The overlay listens for this event to play audio and update its state
+          const { Events } = await import("@wailsio/runtime")
+          Events.Emit("conversation:response", { text: fullText, audio: audioBase64 })
+          
+          if (onAudioReceivedRef.current) {
+            onAudioReceivedRef.current({
+              text: fullText,
+              audioBase64: audioBase64 || null,
+            })
+          }
+
+          // Estimate audio duration and resume listening after playback
+          // Rough estimate: ~150 words per minute, ~5 chars per word
+          const wordCount = fullText.length / 5
+          const audioDurationMs = (wordCount / 150) * 60 * 1000
+          const bufferMs = 500
+          setTimeout(async () => {
+            try {
+              await ResumeListening()
+            } catch (e) {
+              console.warn("[useConversation] Failed to resume listening:", e)
+            }
+          }, audioDurationMs + bufferMs)
+        } else {
+          // No TTS configured, just notify with text only and resume immediately
+          // Emit conversation:response event for overlay (no audio)
+          const { Events } = await import("@wailsio/runtime")
+          Events.Emit("conversation:response", { text: fullText, audio: null })
+          
+          if (onAudioReceivedRef.current) {
+            onAudioReceivedRef.current({
+              text: fullText,
+              audioBase64: null,
+            })
+          }
+          // Resume listening immediately since no audio playback
+          try {
+            await ResumeListening()
+          } catch (e) {
+            console.warn("[useConversation] Failed to resume listening:", e)
+          }
+        }
+      } catch (ttsError) {
+        console.warn("[useConversation] TTS synthesis failed:", ttsError)
+        // Still notify with text even if TTS fails
+        if (onAudioReceivedRef.current) {
+          onAudioReceivedRef.current({
+            text: fullText,
+            audioBase64: null,
+          })
+        }
+        // Resume listening after error
+        try {
+          const { ResumeListening } = await import("@/bindings/super-characters/app")
+          await ResumeListening()
+        } catch (e) {
+          console.warn("[useConversation] Failed to resume listening:", e)
+        }
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Unknown error occurred"
+      setError(errorMessage)
+      setIsThinking(false)
+      setCurrentResponse("")
+      
+      // Add error as assistant message
+      setConversation((prev) => [...prev, { role: "assistant", text: `Error: ${errorMessage}` }])
+
+      // Resume listening after error
+      try {
+        const { ResumeListening } = await import("@/bindings/super-characters/app")
+        await ResumeListening()
+      } catch (e) {
+        console.warn("[useConversation] Failed to resume listening:", e)
+      }
+    }
+  }, [])
 
   // Subscribe to conversation events
   useEffect(() => {
@@ -58,6 +212,7 @@ export function useConversation(options?: UseConversationOptions): ConversationS
     let unsubRecording: (() => void) | undefined
     let unsubRecordingStop: (() => void) | undefined
     let unsubSegment: (() => void) | undefined
+    let unsubTranscriptionComplete: (() => void) | undefined
     // Continuous mode events
     let unsubListeningStarted: (() => void) | undefined
     let unsubListeningStopped: (() => void) | undefined
@@ -68,7 +223,21 @@ export function useConversation(options?: UseConversationOptions): ConversationS
     const setupEventListeners = async () => {
       const { Events } = await import("@wailsio/runtime")
 
+      // In agent mode, we intercept transcription-complete to process with agent
+      unsubTranscriptionComplete = Events.On("transcription-complete", async (event: any) => {
+        if (!useAgentMode) return // Let Go backend handle it in legacy mode
+        
+        const text = event.data?.text
+        if (text && isActive) {
+          setCurrentTranscript("")
+          await processWithAgent(text)
+        }
+      })
+
+      // Legacy mode: handle conversation:response from Go backend
       unsubResponse = Events.On("conversation:response", async (event: any) => {
+        if (useAgentMode) return // Ignore in agent mode
+        
         const { text, audio } = event.data || {}
         setIsThinking(false)
         setIsSpeechDetected(false)
@@ -87,7 +256,10 @@ export function useConversation(options?: UseConversationOptions): ConversationS
         }
       })
 
+      // Legacy mode: handle thinking state from Go backend
       unsubThinking = Events.On("conversation:thinking", () => {
+        if (useAgentMode) return // Agent mode handles its own thinking state
+        
         setIsThinking(true)
         setIsSpeechDetected(false)
         setError(null)
@@ -101,7 +273,10 @@ export function useConversation(options?: UseConversationOptions): ConversationS
         setConversation((prev) => [...prev, { role: "assistant", text: `Error: ${errorMsg}` }])
       })
 
+      // Legacy mode: handle user message from Go backend
       unsubUserMessage = Events.On("conversation:user-message", (event: any) => {
+        if (useAgentMode) return // Agent mode handles its own user messages
+        
         const text = event.data?.text
         if (text) {
           setCurrentTranscript("")
@@ -167,13 +342,14 @@ export function useConversation(options?: UseConversationOptions): ConversationS
       unsubRecording?.()
       unsubRecordingStop?.()
       unsubSegment?.()
+      unsubTranscriptionComplete?.()
       unsubListeningStarted?.()
       unsubListeningStopped?.()
       unsubSpeechDetected?.()
       unsubProcessing?.()
       unsubListeningResumed?.()
     }
-  }, [])
+  }, [useAgentMode, isActive, processWithAgent])
 
   const startConversation = useCallback(async () => {
     try {
@@ -181,6 +357,7 @@ export function useConversation(options?: UseConversationOptions): ConversationS
       await StartConversation()
       setIsActive(true)
       setConversation([])
+      conversationHistoryRef.current = []
       setError(null)
     } catch (e) {
       console.error("Failed to start conversation:", e)
@@ -196,6 +373,7 @@ export function useConversation(options?: UseConversationOptions): ConversationS
       setIsListening(false)
       setIsThinking(false)
       setCurrentTranscript("")
+      setCurrentResponse("")
     } catch (e) {
       console.error("Failed to stop conversation:", e)
     }
@@ -203,8 +381,14 @@ export function useConversation(options?: UseConversationOptions): ConversationS
 
   const clearConversation = useCallback(() => {
     setConversation([])
+    conversationHistoryRef.current = []
     setCurrentTranscript("")
+    setCurrentResponse("")
     setError(null)
+  }, [])
+
+  const setAgentMode = useCallback((enabled: boolean) => {
+    setUseAgentMode(enabled)
   }, [])
 
   return {
@@ -215,9 +399,12 @@ export function useConversation(options?: UseConversationOptions): ConversationS
     isSpeechDetected,
     conversation,
     currentTranscript,
+    currentResponse,
     error,
+    useAgentMode,
     startConversation,
     stopConversation,
     clearConversation,
+    setAgentMode,
   }
 }

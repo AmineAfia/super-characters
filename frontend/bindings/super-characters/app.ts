@@ -115,6 +115,13 @@ export function IsReady(): $CancellablePromise<boolean> {
 }
 
 /**
+ * IsTTSConfigured returns whether the TTS service (ElevenLabs) is configured.
+ */
+export function IsTTSConfigured(): $CancellablePromise<boolean> {
+    return $Call.ByID(3146817410);
+}
+
+/**
  * IsTranscribing returns whether transcription is currently active
  */
 export function IsTranscribing(): $CancellablePromise<boolean> {
@@ -133,6 +140,14 @@ export function OpenAccessibilitySettings(): $CancellablePromise<void> {
  */
 export function OpenMicrophoneSettings(): $CancellablePromise<void> {
     return $Call.ByID(2078724176);
+}
+
+/**
+ * PauseListening pauses the VAD to prevent picking up TTS audio
+ * Called by frontend when agent starts speaking
+ */
+export function PauseListening(): $CancellablePromise<void> {
+    return $Call.ByID(2537858346);
 }
 
 /**
@@ -162,6 +177,14 @@ export function RequestMicrophonePermission(): $CancellablePromise<void> {
  */
 export function ResizeOverlay(width: number, height: number): $CancellablePromise<void> {
     return $Call.ByID(2507787999, width, height);
+}
+
+/**
+ * ResumeListening resumes the VAD after TTS playback is complete
+ * Called by frontend when agent finishes speaking
+ */
+export function ResumeListening(): $CancellablePromise<void> {
+    return $Call.ByID(1650047363);
 }
 
 /**
@@ -248,6 +271,15 @@ export function StopConversation(): $CancellablePromise<string> {
  */
 export function StopTranscription(): $CancellablePromise<string> {
     return $Call.ByID(293876119);
+}
+
+/**
+ * SynthesizeSpeech takes text and returns base64-encoded audio.
+ * This is used by the frontend agent to synthesize speech independently
+ * of the conversation flow.
+ */
+export function SynthesizeSpeech(text: string): $CancellablePromise<string> {
+    return $Call.ByID(117271191, text);
 }
 
 // Private type creation functions
