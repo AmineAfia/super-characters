@@ -1,0 +1,176 @@
+@import "tailwindcss";
+@config "../tailwind.config.ts";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+	--background: oklch(0.985 0.002 247.839);
+	--foreground: oklch(0.21 0.034 264.665);
+	--card: var(--color-white);
+	--card-foreground: var(--color-gray-900);
+	--popover: var(--color-white);
+	--popover-foreground: hsl(224 71.4% 4.1%);
+	--primary: #000000;
+	--primary-foreground: #FFFFFF;
+	--secondary: var(--color-gray-100);
+	--secondary-foreground: var(--color-gray-900);
+	--muted: var(--color-gray-100);
+	--muted-foreground: var(--color-gray-500);
+	--accent: var(--color-blue-600);
+	--accent-foreground: var(--color-white);
+	--destructive: oklch(0.637 0.237 25.331);
+	--destructive-foreground: oklch(0.577 0.245 27.325);
+	--border: var(--color-gray-200);
+	--border-subtle: var(--color-gray-300);
+	--input: var(--color-gray-200);
+	--ring: var(--color-gray-200);
+	--radius: 0.5rem;
+}
+
+.dark {
+	/* Polar.sh exact background colors */
+	--background: hsl(233, 5%, 9.5%);
+	--foreground: var(--color-polar-50);
+	--card: #161618;
+	--card-foreground: var(--color-polar-50);
+	--popover: #101011;
+	--popover-foreground: var(--color-polar-50);
+	--primary: #FFFFFF;
+	--primary-foreground: #000000;
+	--secondary: #171719;
+	--secondary-foreground: var(--color-polar-50);
+	--muted: #1d1d20;
+	--muted-foreground: #6f717b;
+	--accent: var(--color-blue-600);
+	--accent-foreground: var(--color-polar-50);
+	--destructive: oklch(0.637 0.237 25.331);
+	--destructive-foreground: oklch(0.637 0.237 25.331);
+	--border: #1F1F21;
+	--border-subtle: hsl(0 0% 16%);
+	--input: #1F1F21;
+	--ring: #363636;
+}
+
+@theme inline {
+	--color-background: var(--background);
+	--color-foreground: var(--foreground);
+	--color-card: var(--card);
+	--color-card-foreground: var(--card-foreground);
+	--color-popover: var(--popover);
+	--color-popover-foreground: var(--popover-foreground);
+	--color-primary: var(--primary);
+	--color-primary-foreground: var(--primary-foreground);
+	--color-secondary: var(--secondary);
+	--color-secondary-foreground: var(--secondary-foreground);
+	--color-muted: var(--muted);
+	--color-muted-foreground: var(--muted-foreground);
+	--color-accent: var(--accent);
+	--color-accent-foreground: var(--accent-foreground);
+	--color-destructive: var(--destructive);
+	--color-destructive-foreground: var(--destructive-foreground);
+	--color-border: var(--border);
+	--color-border-subtle: var(--border-subtle);
+	--color-input: var(--input);
+	--color-ring: var(--ring);
+	--radius-sm: calc(var(--radius) - 4px);
+	--radius-md: calc(var(--radius) - 2px);
+	--radius-lg: var(--radius);
+	--radius-xl: calc(var(--radius) + 4px);
+
+	/* Gray Palette */
+	--color-gray-50: lab(98.2596% -.247031 -.706708);
+	--color-gray-100: lab(96.1596% -.0823438 -1.13575);
+	--color-gray-200: lab(91.6229% -.159115 -2.26791);
+	--color-gray-300: lab(85.1236% -.612259 -3.7138);
+	--color-gray-400: lab(65.9269% -.832707 -8.17473);
+	--color-gray-500: lab(47.7841% -.393182 -10.0268);
+	--color-gray-600: lab(35.6337% -1.58697 -10.8425);
+	--color-gray-700: lab(27.1134% -.956401 -12.3224);
+	--color-gray-800: lab(16.1051% -1.18239 -11.7533);
+	--color-gray-900: lab(8.11897% .811279 -12.254);
+	--color-gray-950: lab(1.90334% .278696 -5.48866);
+
+	/* Polar Palette */
+	--color-polar-50: #d7d7db;
+	--color-polar-100: #c7c7cc;
+	--color-polar-200: #a9aab1;
+	--color-polar-300: #999aa3;
+	--color-polar-400: #7e808b;
+	--color-polar-500: #6f717b;
+	--color-polar-600: #3a3b40;
+	--color-polar-700: #1d1d20;
+	--color-polar-800: #171719;
+	--color-polar-900: #101011;
+	--color-polar-950: #070708;
+
+	/* Blue Palette */
+	--color-blue-50: oklch(0.97 0.014 254.604);
+	--color-blue-100: oklch(0.932 0.032 255.585);
+	--color-blue-200: oklch(0.882 0.059 254.128);
+	--color-blue-300: oklch(0.809 0.105 251.813);
+	--color-blue-400: oklch(0.707 0.165 254.624);
+	--color-blue-500: oklch(0.623 0.214 259.815);
+	--color-blue-600: oklch(0.546 0.245 262.881);
+	--color-blue-700: oklch(0.488 0.243 264.376);
+	--color-blue-800: oklch(0.424 0.199 265.638);
+	--color-blue-900: oklch(0.379 0.146 265.522);
+	--color-blue-950: oklch(0.282 0.091 267.935);
+	--color-blue: var(--color-blue-600);
+}
+
+@layer base {
+	* {
+		@apply border-border outline-ring/50;
+	}
+	html {
+		background-color: transparent !important;
+		border: none !important;
+	}
+	body {
+		@apply text-foreground font-sans;
+		background-color: transparent !important;
+		border: none !important;
+	}
+
+	/* Global header text styling */
+	h1, h2, h3, h4, h5, h6 {
+		@apply tracking-tight font-medium;
+	}
+
+	h1 {
+		@apply text-4xl md:text-5xl lg:text-6xl;
+	}
+
+	h2 {
+		@apply text-3xl md:text-4xl lg:text-5xl;
+	}
+
+	h3 {
+		@apply text-2xl md:text-3xl;
+	}
+
+	h4 {
+		@apply text-xl md:text-2xl;
+	}
+
+	/* Gradient text utility */
+	.text-gradient {
+		@apply bg-clip-text text-transparent;
+		background-image: linear-gradient(to right, #ffffff, #a1a1a1);
+	}
+
+	.text-gradient-blue {
+		@apply bg-clip-text text-transparent;
+		background-image: linear-gradient(135deg, #60a5fa, #3b82f6, #8b5cf6);
+	}
+}
+
+.no-visible-scrollbar {
+	scrollbar-width: none;
+	-ms-overflow-style: none;
+	-webkit-overflow-scrolling: touch;
+}
+
+.no-visible-scrollbar::-webkit-scrollbar {
+	display: none;
+}

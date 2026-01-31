@@ -1,0 +1,21 @@
+{
+  "name": "super-characters",
+  "description": "Super Characters",
+  "author": {
+    "name": "Amine Afia",
+    "email": "afia.amine@gmail.com"
+  },
+  "frontend": {
+    "dir": "frontend",
+    "install": "npm install",
+    "build": "npm run build",
+    "dev": "npm run dev",
+    "devServerUrl": "http://localhost:3000"
+  },
+  "bindings": {
+    "ts_generation": {
+      "output_type": "classes",
+      "output_dir": "frontend/bindings"
+    }
+  }
+}
