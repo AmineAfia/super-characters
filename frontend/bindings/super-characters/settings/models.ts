@@ -15,6 +15,11 @@ export class Settings {
     "elevenLabsVoiceId": string;
     "pressAndTalkHotkey": string;
 
+    /**
+     * Silence duration for VAD (default: 300ms)
+     */
+    "silenceDurationMs": number;
+
     /** Creates a new Settings instance. */
     constructor($$source: Partial<Settings> = {}) {
         if (!("geminiApiKey" in $$source)) {
@@ -28,6 +33,9 @@ export class Settings {
         }
         if (!("pressAndTalkHotkey" in $$source)) {
             this["pressAndTalkHotkey"] = "";
+        }
+        if (!("silenceDurationMs" in $$source)) {
+            this["silenceDurationMs"] = 0;
         }
 
         Object.assign(this, $$source);

@@ -13,6 +13,9 @@ import (
 // AudioLevelCallback is called with the current audio level (0.0 - 1.0)
 type AudioLevelCallback func(level float32)
 
+// StreamCallback is called with audio samples in real-time for streaming processing
+type StreamCallback func(samples []float32)
+
 // AudioService handles audio capture from microphone
 type AudioService struct {
 	ctx          context.Context
@@ -40,6 +43,10 @@ type AudioService struct {
 	// Level processing
 	levelChan      chan float32
 	levelDone      chan struct{}
+	
+	// Streaming mode for real-time processing (e.g., VAD)
+	streamCallback StreamCallback
+	streamMutex    sync.RWMutex
 }
 
 // NewAudioService creates a new audio service for capturing microphone input
@@ -130,6 +137,21 @@ func (a *AudioService) SetAudioLevelCallback(callback AudioLevelCallback) {
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
 	a.onAudioLevel = callback
+}
+
+// SetStreamCallback sets the callback for real-time audio streaming (e.g., for VAD processing)
+// The callback receives audio samples as they arrive from the microphone
+func (a *AudioService) SetStreamCallback(callback StreamCallback) {
+	a.streamMutex.Lock()
+	defer a.streamMutex.Unlock()
+	a.streamCallback = callback
+}
+
+// ClearStreamCallback removes the stream callback
+func (a *AudioService) ClearStreamCallback() {
+	a.streamMutex.Lock()
+	defer a.streamMutex.Unlock()
+	a.streamCallback = nil
 }
 
 // Start begins audio capture from the default microphone
@@ -400,6 +422,19 @@ func (a *AudioService) audioDataCallback(outputSample, inputSamples []byte, fram
 
 	// Append to capture buffer
 	a.buffer = append(a.buffer, samples...)
+	
+	// Call stream callback for real-time processing (e.g., VAD)
+	// Use RLock to check without blocking other readers
+	a.streamMutex.RLock()
+	streamCb := a.streamCallback
+	a.streamMutex.RUnlock()
+	if streamCb != nil {
+		// Copy samples for callback to avoid race conditions
+		samplesCopy := make([]float32, len(samples))
+		copy(samplesCopy, samples)
+		// Call synchronously - callback must be fast to avoid audio issues
+		streamCb(samplesCopy)
+	}
 
 	// Send to recorder if active
 	// We need to release the main mutex briefly to acquire recording mutex?

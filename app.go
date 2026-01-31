@@ -15,8 +15,19 @@ import (
 	"super-characters/permissions"
 	"super-characters/settings"
 	"super-characters/transcription"
+	"super-characters/vad"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
+)
+
+// ConversationState represents the current state of the continuous conversation
+type ConversationState string
+
+const (
+	ConversationStateIdle       ConversationState = "idle"
+	ConversationStateListening  ConversationState = "listening"
+	ConversationStateProcessing ConversationState = "processing"
+	ConversationStateSpeaking   ConversationState = "speaking"
 )
 
 // App struct holds application state and dependencies
@@ -48,6 +59,13 @@ type App struct {
 	isConversationMode  bool
 	conversationHistory []gemini.ChatMessage
 
+	// Continuous conversation mode (VAD-based)
+	vadService             *vad.VADService
+	continuousMode         bool
+	continuousStateMutex   sync.Mutex
+	continuousState        ConversationState
+	pendingSpeechProcessed bool // Prevents duplicate processing
+
 	// Context for transcription
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -58,6 +76,15 @@ func NewApp() *App {
 	permSvc, _ := permissions.NewPermissionsService()
 	settingsSvc, _ := settings.NewSettingsService()
 
+	// Get silence duration from settings or use default
+	silenceDuration := 300 * time.Millisecond
+	if settingsSvc != nil {
+		silenceDuration = time.Duration(settingsSvc.GetSilenceDurationMs()) * time.Millisecond
+	}
+
+	vadCfg := vad.DefaultConfig()
+	vadCfg.SilenceDuration = silenceDuration
+
 	return &App{
 		transcriptionService: transcription.NewTranscriptionService(),
 		audioService:         audio.NewAudioService(),
@@ -66,6 +93,8 @@ func NewApp() *App {
 		geminiService:        gemini.NewGeminiService(),
 		elevenlabsService:    elevenlabs.NewElevenLabsService(),
 		settingsService:      settingsSvc,
+		vadService:           vad.NewVADService(vadCfg),
+		continuousState:      ConversationStateIdle,
 	}
 }
 
@@ -304,8 +333,16 @@ func (a *App) ServiceStartup(ctx context.Context, options application.ServiceOpt
 func (a *App) ServiceShutdown() error {
 	slog.Info("App service shutting down")
 
+	// Stop continuous listening if active
+	a.stopContinuousListening()
+
 	// Stop hotkey service
 	a.hotkeyService.Stop()
+
+	// Stop VAD service
+	if a.vadService != nil {
+		a.vadService.Stop()
+	}
 
 	// Stop audio service
 	a.audioService.Stop()
@@ -348,20 +385,20 @@ func (a *App) RegisterHotkeys() {
 }
 
 // onPressAndTalkToggle handles the press-and-talk hotkey toggle
-// When enabled, shows overlay and starts recording
-// When disabled, stops recording and hides overlay
+// When enabled, shows overlay and starts continuous listening with VAD
+// When disabled, stops listening and hides overlay
 func (a *App) onPressAndTalkToggle(enabled bool) {
 	slog.Info("press-and-talk toggled", "enabled", enabled)
 
 	if enabled {
-		// Show overlay and start recording
+		// Show overlay and start continuous listening
 		a.pressAndTalkActive = true
 		a.showOverlay()
-		go a.StartTranscription("en")
+		go a.startContinuousListening()
 	} else {
-		// Stop recording and hide overlay
+		// Stop continuous listening and hide overlay
 		a.pressAndTalkActive = false
-		go a.StopTranscription()
+		go a.stopContinuousListening()
 		a.hideOverlay()
 	}
 }
@@ -468,6 +505,307 @@ func (a *App) IsTranscribing() bool {
 	defer a.recordingMutex.Unlock()
 	return a.isTranscribing
 }
+
+// #region Continuous Conversation Mode (VAD-based)
+
+// startContinuousListening begins continuous voice activity detection
+// This enables natural conversation flow where users speak, pause, and the system
+// automatically processes their speech when silence is detected
+func (a *App) startContinuousListening() {
+	a.continuousStateMutex.Lock()
+	if a.continuousMode {
+		a.continuousStateMutex.Unlock()
+		return
+	}
+	a.continuousMode = true
+	a.continuousState = ConversationStateListening
+	a.continuousStateMutex.Unlock()
+
+	// Start conversation mode if not already active
+	if !a.isConversationMode {
+		a.StartConversation()
+	}
+
+	// Set up VAD callbacks
+	a.vadService.SetCallbacks(
+		a.onVADSpeechStart,
+		a.onVADSpeechEnd,
+	)
+
+	// Set up audio streaming to VAD
+	a.audioService.SetStreamCallback(func(samples []float32) {
+		a.vadService.ProcessSamples(samples)
+	})
+
+	// Start audio capture
+	if err := a.audioService.Start(); err != nil {
+		slog.Error("[ContinuousMode] Failed to start audio capture", "error", err)
+		a.continuousStateMutex.Lock()
+		a.continuousMode = false
+		a.continuousState = ConversationStateIdle
+		a.continuousStateMutex.Unlock()
+		return
+	}
+
+	// Start VAD
+	a.vadService.Start()
+
+	// Emit event to frontend
+	if a.app != nil {
+		a.app.Event.Emit("conversation:listening-started", nil)
+	}
+
+	slog.Info("[ContinuousMode] Started continuous listening")
+}
+
+// stopContinuousListening stops the continuous listening mode
+func (a *App) stopContinuousListening() {
+	a.continuousStateMutex.Lock()
+	if !a.continuousMode {
+		a.continuousStateMutex.Unlock()
+		return
+	}
+	a.continuousMode = false
+	a.continuousState = ConversationStateIdle
+	a.continuousStateMutex.Unlock()
+
+	// Stop VAD first
+	a.vadService.Stop()
+
+	// Clear stream callback
+	a.audioService.ClearStreamCallback()
+
+	// Stop audio capture
+	a.audioService.Stop()
+
+	// Emit event to frontend
+	if a.app != nil {
+		a.app.Event.Emit("conversation:listening-stopped", nil)
+	}
+
+	slog.Info("[ContinuousMode] Stopped continuous listening")
+}
+
+// onVADSpeechStart is called when VAD detects speech starting
+func (a *App) onVADSpeechStart() {
+	a.continuousStateMutex.Lock()
+	if a.continuousState != ConversationStateListening {
+		a.continuousStateMutex.Unlock()
+		return
+	}
+	a.continuousStateMutex.Unlock()
+
+	slog.Debug("[ContinuousMode] Speech detected")
+
+	// Emit event to frontend for visual feedback
+	if a.app != nil {
+		a.app.Event.Emit("conversation:speech-detected", nil)
+	}
+}
+
+// onVADSpeechEnd is called when VAD detects speech ending (silence threshold reached)
+func (a *App) onVADSpeechEnd(samples []float32) {
+	a.continuousStateMutex.Lock()
+	// Only process if we're in listening state and not already processing
+	if a.continuousState != ConversationStateListening {
+		a.continuousStateMutex.Unlock()
+		slog.Debug("[ContinuousMode] Ignoring speech end, not in listening state", "state", a.continuousState)
+		return
+	}
+	a.continuousState = ConversationStateProcessing
+	a.continuousStateMutex.Unlock()
+
+	slog.Info("[ContinuousMode] Speech ended, processing", "samples", len(samples))
+
+	// Emit processing state to frontend
+	if a.app != nil {
+		a.app.Event.Emit("conversation:processing", nil)
+	}
+
+	// Pause VAD during processing to avoid picking up TTS audio
+	a.vadService.Pause()
+
+	// Process the speech samples
+	go a.processContinuousSpeech(samples)
+}
+
+// processContinuousSpeech transcribes and processes speech from continuous mode
+func (a *App) processContinuousSpeech(samples []float32) {
+	if len(samples) == 0 {
+		a.resumeListening()
+		return
+	}
+
+	// Transcribe the audio
+	text, lang, err := a.transcriptionService.Process(samples, a.ctx)
+	if err != nil {
+		slog.Error("[ContinuousMode] Transcription failed", "error", err)
+		a.resumeListening()
+		return
+	}
+
+	if text == "" {
+		slog.Debug("[ContinuousMode] Empty transcription, resuming listening")
+		a.resumeListening()
+		return
+	}
+
+	slog.Info("[ContinuousMode] Transcribed", "text", text, "language", lang)
+
+	// Update state to speaking
+	a.continuousStateMutex.Lock()
+	a.continuousState = ConversationStateSpeaking
+	a.continuousStateMutex.Unlock()
+
+	// Process through conversation pipeline (this will emit events)
+	a.processConversationWithCallback(text, func() {
+		// Called when TTS playback is expected to complete
+		// Resume listening for the next turn
+		a.resumeListening()
+	})
+}
+
+// processConversationWithCallback processes a conversation turn and calls the callback when done
+func (a *App) processConversationWithCallback(text string, onComplete func()) {
+	if text == "" {
+		onComplete()
+		return
+	}
+
+	slog.Info("[Conversation] Processing user input", "text", text)
+
+	// Emit user message to frontend
+	if a.app != nil {
+		a.app.Event.Emit("conversation:user-message", map[string]interface{}{
+			"text": text,
+		})
+	}
+
+	// Append user message to history
+	a.conversationHistory = append(a.conversationHistory, gemini.ChatMessage{
+		Role:    "user",
+		Content: text,
+	})
+
+	// Trim history to max turns (keep system prompt + last N turn pairs)
+	maxMessages := 1 + gemini.MaxConversationTurns*2 // system + N*(user+assistant)
+	if len(a.conversationHistory) > maxMessages {
+		a.conversationHistory = append(
+			a.conversationHistory[:1],
+			a.conversationHistory[len(a.conversationHistory)-maxMessages+1:]...,
+		)
+	}
+
+	// Signal thinking
+	if a.app != nil {
+		a.app.Event.Emit("conversation:thinking", nil)
+	}
+
+	// Call Gemini
+	if a.geminiService == nil || !a.geminiService.IsConfigured() {
+		a.emitConversationError("Gemini API key not configured")
+		onComplete()
+		return
+	}
+
+	response, err := a.geminiService.Chat(a.conversationHistory)
+	if err != nil {
+		a.emitConversationError(fmt.Sprintf("Gemini error: %v", err))
+		onComplete()
+		return
+	}
+
+	// Append assistant response to history
+	a.conversationHistory = append(a.conversationHistory, gemini.ChatMessage{
+		Role:    "assistant",
+		Content: response,
+	})
+
+	// Synthesize TTS via ElevenLabs
+	var audioBase64 string
+	var audioDuration time.Duration
+	if a.elevenlabsService != nil && a.elevenlabsService.IsConfigured() {
+		mp3Bytes, err := a.elevenlabsService.Synthesize(response)
+		if err != nil {
+			slog.Warn("[Conversation] ElevenLabs TTS error (falling back to text-only)", "error", err)
+		} else {
+			audioBase64 = base64.StdEncoding.EncodeToString(mp3Bytes)
+			// Estimate audio duration (rough estimate: ~150 words per minute, ~5 chars per word)
+			wordCount := float64(len(response)) / 5.0
+			audioDuration = time.Duration(wordCount/150.0*60.0) * time.Second
+			if audioDuration < time.Second {
+				audioDuration = time.Second
+			}
+		}
+	} else {
+		slog.Info("[Conversation] ElevenLabs not configured, sending text-only response")
+	}
+
+	// Emit response to frontend
+	if a.app != nil {
+		payload := map[string]interface{}{
+			"text": response,
+		}
+		if audioBase64 != "" {
+			payload["audio"] = audioBase64
+		}
+		a.app.Event.Emit("conversation:response", payload)
+	}
+
+	slog.Info("[Conversation] Response sent", "text", response, "hasAudio", audioBase64 != "")
+
+	// Wait for audio playback to complete before resuming listening
+	// Add a small buffer to ensure audio finishes
+	if audioDuration > 0 {
+		go func() {
+			time.Sleep(audioDuration + 500*time.Millisecond)
+			onComplete()
+		}()
+	} else {
+		// No audio, resume immediately after a short delay
+		go func() {
+			time.Sleep(500 * time.Millisecond)
+			onComplete()
+		}()
+	}
+}
+
+// resumeListening resumes listening after processing/speaking is complete
+func (a *App) resumeListening() {
+	a.continuousStateMutex.Lock()
+	if !a.continuousMode {
+		a.continuousStateMutex.Unlock()
+		return
+	}
+	a.continuousState = ConversationStateListening
+	a.continuousStateMutex.Unlock()
+
+	// Resume VAD
+	a.vadService.Resume()
+
+	// Emit event to frontend
+	if a.app != nil {
+		a.app.Event.Emit("conversation:listening-resumed", nil)
+	}
+
+	slog.Info("[ContinuousMode] Resumed listening")
+}
+
+// GetContinuousState returns the current continuous conversation state
+func (a *App) GetContinuousState() string {
+	a.continuousStateMutex.Lock()
+	defer a.continuousStateMutex.Unlock()
+	return string(a.continuousState)
+}
+
+// IsContinuousMode returns whether continuous listening mode is active
+func (a *App) IsContinuousMode() bool {
+	a.continuousStateMutex.Lock()
+	defer a.continuousStateMutex.Unlock()
+	return a.continuousMode
+}
+
+// #endregion Continuous Conversation Mode
 
 // IsReady returns whether the transcription service is initialized
 func (a *App) IsReady() bool {
@@ -716,6 +1054,29 @@ func (a *App) SetElevenLabsVoiceID(voiceID string) string {
 		}
 	}
 	return ""
+}
+
+// SetSilenceDurationMs updates the silence duration for VAD in settings and service.
+func (a *App) SetSilenceDurationMs(durationMs int) string {
+	// Update VAD service immediately
+	if a.vadService != nil {
+		a.vadService.SetSilenceDuration(time.Duration(durationMs) * time.Millisecond)
+	}
+	// Persist to settings
+	if a.settingsService != nil {
+		if err := a.settingsService.SetSilenceDurationMs(durationMs); err != nil {
+			return fmt.Sprintf("Failed to save: %v", err)
+		}
+	}
+	return ""
+}
+
+// GetSilenceDurationMs returns the current silence duration setting.
+func (a *App) GetSilenceDurationMs() int {
+	if a.settingsService != nil {
+		return a.settingsService.GetSilenceDurationMs()
+	}
+	return settings.DefaultSilenceDurationMs
 }
 
 // #endregion Settings API

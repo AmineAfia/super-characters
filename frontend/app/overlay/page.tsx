@@ -3,18 +3,20 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import dynamic from "next/dynamic";
 import type { AvatarCanvasHandle } from "@/components/AvatarCanvas";
-import { Mic, Loader2 } from "lucide-react";
+import { Mic, Loader2, Volume2 } from "lucide-react";
 
 // Dynamic import to avoid SSR issues with Three.js/TalkingHead
 const AvatarCanvas = dynamic(() => import("@/components/AvatarCanvas"), { ssr: false });
 
-type OverlayState = "hidden" | "recording" | "thinking" | "speaking";
+// Extended states for continuous conversation mode
+type OverlayState = "hidden" | "listening" | "speech-detected" | "processing" | "thinking" | "speaking";
 
 export default function OverlayPage() {
-  const [state, setState] = useState<OverlayState>("recording");
+  const [state, setState] = useState<OverlayState>("listening");
   const [isVisible, setIsVisible] = useState(true);
   const [mounted, setMounted] = useState(false);
   const [isAvatarLoading, setIsAvatarLoading] = useState(true);
+  const [isContinuousMode, setIsContinuousMode] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const avatarRef = useRef<AvatarCanvasHandle>(null);
 
@@ -105,14 +107,37 @@ export default function OverlayPage() {
 
       // Listen for overlay state
       const unsubscribeShow = Events.On("overlay:show", (event: any) => {
-        const newState = event.data?.state || "recording";
-        setState(newState as OverlayState);
+        const newState = event.data?.state || "listening";
+        setState(newState === "recording" ? "listening" : newState as OverlayState);
         setIsVisible(true);
       });
 
       const unsubscribeHide = Events.On("overlay:hide", () => {
         setState("hidden");
         setIsVisible(false);
+        setIsContinuousMode(false);
+      });
+
+      // Continuous conversation mode events
+      const unsubscribeListeningStarted = Events.On("conversation:listening-started", () => {
+        setIsContinuousMode(true);
+        setState("listening");
+      });
+
+      const unsubscribeListeningStopped = Events.On("conversation:listening-stopped", () => {
+        setIsContinuousMode(false);
+      });
+
+      const unsubscribeSpeechDetected = Events.On("conversation:speech-detected", () => {
+        setState("speech-detected");
+      });
+
+      const unsubscribeProcessing = Events.On("conversation:processing", () => {
+        setState("processing");
+      });
+
+      const unsubscribeListeningResumed = Events.On("conversation:listening-resumed", () => {
+        setState("listening");
       });
 
       // Listen for conversation events
@@ -125,17 +150,26 @@ export default function OverlayPage() {
         if (audio) {
           await handleAudioReceived({ text: text || "", audioBase64: audio });
         }
-        // After speaking, go back to recording state
-        setTimeout(() => setState("recording"), 100);
+        // In continuous mode, backend will emit listening-resumed
+        // In non-continuous mode, stay in speaking briefly then reset
+        if (!isContinuousMode) {
+          setTimeout(() => setState("listening"), 100);
+        }
       });
 
       const unsubscribeError = Events.On("conversation:error", () => {
-        setState("recording");
+        // Go back to listening state on error
+        setState("listening");
       });
 
       cleanupFns = [
         unsubscribeShow,
         unsubscribeHide,
+        unsubscribeListeningStarted,
+        unsubscribeListeningStopped,
+        unsubscribeSpeechDetected,
+        unsubscribeProcessing,
+        unsubscribeListeningResumed,
         unsubscribeThinking,
         unsubscribeResponse,
         unsubscribeError,
@@ -147,7 +181,7 @@ export default function OverlayPage() {
     return () => {
       cleanupFns.forEach((fn) => fn());
     };
-  }, [mounted, handleAudioReceived]);
+  }, [mounted, handleAudioReceived, isContinuousMode]);
 
   if (!mounted) {
     return null;
@@ -185,21 +219,35 @@ export default function OverlayPage() {
           <div className="absolute bottom-2 left-2 right-2 flex justify-center">
             <div
               className={`
-                inline-flex items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-medium
-                ${state === "recording"
-                  ? "bg-red-500/90 text-white"
-                  : state === "thinking"
-                    ? "bg-yellow-500/90 text-white"
-                    : state === "speaking"
-                      ? "bg-green-500/90 text-white"
-                      : "bg-gray-900/70 text-white"
+                inline-flex items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-medium transition-all duration-200
+                ${state === "listening"
+                  ? "bg-blue-500/90 text-white"
+                  : state === "speech-detected"
+                    ? "bg-red-500/90 text-white"
+                    : state === "processing"
+                      ? "bg-orange-500/90 text-white"
+                      : state === "thinking"
+                        ? "bg-yellow-500/90 text-white"
+                        : state === "speaking"
+                          ? "bg-green-500/90 text-white"
+                          : "bg-gray-900/70 text-white"
                 }
               `}
             >
-              {state === "recording" ? (
+              {state === "listening" ? (
+                <>
+                  <Mic className="h-3 w-3" />
+                  <span>Listening...</span>
+                </>
+              ) : state === "speech-detected" ? (
                 <>
                   <Mic className="h-3 w-3 animate-pulse" />
-                  <span>Listening...</span>
+                  <span>Speaking...</span>
+                </>
+              ) : state === "processing" ? (
+                <>
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  <span>Processing...</span>
                 </>
               ) : state === "thinking" ? (
                 <>
@@ -208,8 +256,8 @@ export default function OverlayPage() {
                 </>
               ) : state === "speaking" ? (
                 <>
-                  <span className="w-2 h-2 bg-white rounded-full animate-pulse" />
-                  <span>Speaking...</span>
+                  <Volume2 className="h-3 w-3 animate-pulse" />
+                  <span>Responding...</span>
                 </>
               ) : null}
             </div>

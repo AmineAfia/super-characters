@@ -8,12 +8,16 @@ import (
 	"sync"
 )
 
+// DefaultSilenceDurationMs is the default silence duration for VAD
+const DefaultSilenceDurationMs = 300
+
 // Settings holds application configuration.
 type Settings struct {
 	GeminiAPIKey       string `json:"geminiApiKey"`
 	ElevenLabsAPIKey   string `json:"elevenLabsApiKey"`
 	ElevenLabsVoiceID  string `json:"elevenLabsVoiceId"`
 	PressAndTalkHotkey string `json:"pressAndTalkHotkey"`
+	SilenceDurationMs  int    `json:"silenceDurationMs"` // Silence duration for VAD (default: 300ms)
 }
 
 // SettingsService manages persistent settings storage.
@@ -145,4 +149,31 @@ func (s *SettingsService) GetPressAndTalkHotkey() string {
 		return "Ctrl+Shift+Space" // Default hotkey
 	}
 	return s.settings.PressAndTalkHotkey
+}
+
+// SetSilenceDurationMs updates the silence duration for VAD.
+func (s *SettingsService) SetSilenceDurationMs(durationMs int) error {
+	// Clamp to valid range (100ms - 1000ms)
+	if durationMs < 100 {
+		durationMs = 100
+	}
+	if durationMs > 1000 {
+		durationMs = 1000
+	}
+
+	s.mu.Lock()
+	s.settings.SilenceDurationMs = durationMs
+	s.mu.Unlock()
+
+	return s.save()
+}
+
+// GetSilenceDurationMs returns the silence duration with a default fallback.
+func (s *SettingsService) GetSilenceDurationMs() int {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if s.settings.SilenceDurationMs <= 0 {
+		return DefaultSilenceDurationMs
+	}
+	return s.settings.SilenceDurationMs
 }

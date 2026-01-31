@@ -41,6 +41,13 @@ export function DownloadModel(modelName: string): $CancellablePromise<void> {
 }
 
 /**
+ * GetContinuousState returns the current continuous conversation state
+ */
+export function GetContinuousState(): $CancellablePromise<string> {
+    return $Call.ByID(2668643057);
+}
+
+/**
  * GetLanguages returns supported transcription languages
  */
 export function GetLanguages(): $CancellablePromise<string[]> {
@@ -59,10 +66,24 @@ export function GetSettings(): $CancellablePromise<settings$0.Settings> {
 }
 
 /**
+ * GetSilenceDurationMs returns the current silence duration setting.
+ */
+export function GetSilenceDurationMs(): $CancellablePromise<number> {
+    return $Call.ByID(361306074);
+}
+
+/**
  * Greet returns a greeting message - example method exposed to frontend
  */
 export function Greet(name: string): $CancellablePromise<string> {
     return $Call.ByID(2659711170, name);
+}
+
+/**
+ * IsContinuousMode returns whether continuous listening mode is active
+ */
+export function IsContinuousMode(): $CancellablePromise<boolean> {
+    return $Call.ByID(2049118753);
 }
 
 /**
@@ -183,6 +204,13 @@ export function SetOverlayWindow(window: application$0.WebviewWindow | null): $C
  */
 export function SetSelectedLanguage(language: string): $CancellablePromise<void> {
     return $Call.ByID(2460770088, language);
+}
+
+/**
+ * SetSilenceDurationMs updates the silence duration for VAD in settings and service.
+ */
+export function SetSilenceDurationMs(durationMs: number): $CancellablePromise<string> {
+    return $Call.ByID(2930594590, durationMs);
 }
 
 /**

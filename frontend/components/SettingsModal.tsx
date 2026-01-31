@@ -23,6 +23,7 @@ export default function SettingsModal({ open, onOpenChange }: SettingsModalProps
   const [geminiApiKey, setGeminiApiKey] = useState("")
   const [elevenLabsApiKey, setElevenLabsApiKey] = useState("")
   const [elevenLabsVoiceId, setElevenLabsVoiceId] = useState("")
+  const [silenceDurationMs, setSilenceDurationMs] = useState(300)
   const [isSaving, setIsSaving] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
 
@@ -35,11 +36,14 @@ export default function SettingsModal({ open, onOpenChange }: SettingsModalProps
 
   const loadSettings = async () => {
     try {
-      const { GetSettings } = await import("@/bindings/super-characters/app")
+      const { GetSettings, GetSilenceDurationMs } = await import("@/bindings/super-characters/app")
       const settings = await GetSettings()
       setGeminiApiKey(settings.geminiApiKey || "")
       setElevenLabsApiKey(settings.elevenLabsApiKey || "")
       setElevenLabsVoiceId(settings.elevenLabsVoiceId || "")
+      // Load silence duration separately (has default handling)
+      const duration = await GetSilenceDurationMs()
+      setSilenceDurationMs(duration || 300)
     } catch (e) {
       console.error("Failed to load settings:", e)
     }
@@ -50,7 +54,7 @@ export default function SettingsModal({ open, onOpenChange }: SettingsModalProps
     setSaveSuccess(false)
 
     try {
-      const { SetGeminiAPIKey, SetElevenLabsAPIKey, SetElevenLabsVoiceID } = await import(
+      const { SetGeminiAPIKey, SetElevenLabsAPIKey, SetElevenLabsVoiceID, SetSilenceDurationMs } = await import(
         "@/bindings/super-characters/app"
       )
 
@@ -58,6 +62,7 @@ export default function SettingsModal({ open, onOpenChange }: SettingsModalProps
       await SetGeminiAPIKey(geminiApiKey)
       await SetElevenLabsAPIKey(elevenLabsApiKey)
       await SetElevenLabsVoiceID(elevenLabsVoiceId)
+      await SetSilenceDurationMs(silenceDurationMs)
 
       setSaveSuccess(true)
       setTimeout(() => {
@@ -154,6 +159,27 @@ export default function SettingsModal({ open, onOpenChange }: SettingsModalProps
             />
             <p className="text-xs text-muted-foreground">
               Optional - defaults to Rachel if not set
+            </p>
+          </div>
+
+          {/* Silence Duration */}
+          <div className="grid gap-2">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="silence-duration">Silence Duration</Label>
+              <span className="text-xs text-muted-foreground">{silenceDurationMs}ms</span>
+            </div>
+            <Input
+              id="silence-duration"
+              type="range"
+              min="100"
+              max="1000"
+              step="50"
+              value={silenceDurationMs}
+              onChange={(e) => setSilenceDurationMs(parseInt(e.target.value))}
+              className="cursor-pointer"
+            />
+            <p className="text-xs text-muted-foreground">
+              How long to wait after you stop speaking before processing (100-1000ms)
             </p>
           </div>
         </div>

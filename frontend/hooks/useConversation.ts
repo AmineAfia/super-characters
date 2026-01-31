@@ -11,6 +11,8 @@ export interface ConversationState {
   isActive: boolean
   isListening: boolean
   isThinking: boolean
+  isContinuousMode: boolean
+  isSpeechDetected: boolean
   conversation: ConversationTurn[]
   currentTranscript: string
   error: string | null
@@ -35,6 +37,8 @@ export function useConversation(options?: UseConversationOptions): ConversationS
   const [isActive, setIsActive] = useState(false)
   const [isListening, setIsListening] = useState(false)
   const [isThinking, setIsThinking] = useState(false)
+  const [isContinuousMode, setIsContinuousMode] = useState(false)
+  const [isSpeechDetected, setIsSpeechDetected] = useState(false)
   const [conversation, setConversation] = useState<ConversationTurn[]>([])
   const [currentTranscript, setCurrentTranscript] = useState("")
   const [error, setError] = useState<string | null>(null)
@@ -54,6 +58,12 @@ export function useConversation(options?: UseConversationOptions): ConversationS
     let unsubRecording: (() => void) | undefined
     let unsubRecordingStop: (() => void) | undefined
     let unsubSegment: (() => void) | undefined
+    // Continuous mode events
+    let unsubListeningStarted: (() => void) | undefined
+    let unsubListeningStopped: (() => void) | undefined
+    let unsubSpeechDetected: (() => void) | undefined
+    let unsubProcessing: (() => void) | undefined
+    let unsubListeningResumed: (() => void) | undefined
 
     const setupEventListeners = async () => {
       const { Events } = await import("@wailsio/runtime")
@@ -61,6 +71,7 @@ export function useConversation(options?: UseConversationOptions): ConversationS
       unsubResponse = Events.On("conversation:response", async (event: any) => {
         const { text, audio } = event.data || {}
         setIsThinking(false)
+        setIsSpeechDetected(false)
         setError(null)
 
         if (text) {
@@ -78,11 +89,13 @@ export function useConversation(options?: UseConversationOptions): ConversationS
 
       unsubThinking = Events.On("conversation:thinking", () => {
         setIsThinking(true)
+        setIsSpeechDetected(false)
         setError(null)
       })
 
       unsubError = Events.On("conversation:error", (event: any) => {
         setIsThinking(false)
+        setIsSpeechDetected(false)
         const errorMsg = event.data?.error || "Unknown error"
         setError(errorMsg)
         setConversation((prev) => [...prev, { role: "assistant", text: `Error: ${errorMsg}` }])
@@ -104,6 +117,8 @@ export function useConversation(options?: UseConversationOptions): ConversationS
 
       unsubRecordingStop = Events.On("overlay:hide", () => {
         setIsListening(false)
+        setIsContinuousMode(false)
+        setIsSpeechDetected(false)
       })
 
       // Listen for transcription segments during recording
@@ -112,6 +127,33 @@ export function useConversation(options?: UseConversationOptions): ConversationS
         if (text) {
           setCurrentTranscript((prev) => prev + text + " ")
         }
+      })
+
+      // Continuous conversation mode events
+      unsubListeningStarted = Events.On("conversation:listening-started", () => {
+        setIsContinuousMode(true)
+        setIsListening(true)
+        setIsActive(true)
+      })
+
+      unsubListeningStopped = Events.On("conversation:listening-stopped", () => {
+        setIsContinuousMode(false)
+        setIsListening(false)
+      })
+
+      unsubSpeechDetected = Events.On("conversation:speech-detected", () => {
+        setIsSpeechDetected(true)
+      })
+
+      unsubProcessing = Events.On("conversation:processing", () => {
+        setIsSpeechDetected(false)
+        // Processing is between speech end and thinking
+      })
+
+      unsubListeningResumed = Events.On("conversation:listening-resumed", () => {
+        setIsListening(true)
+        setIsSpeechDetected(false)
+        setIsThinking(false)
       })
     }
 
@@ -125,6 +167,11 @@ export function useConversation(options?: UseConversationOptions): ConversationS
       unsubRecording?.()
       unsubRecordingStop?.()
       unsubSegment?.()
+      unsubListeningStarted?.()
+      unsubListeningStopped?.()
+      unsubSpeechDetected?.()
+      unsubProcessing?.()
+      unsubListeningResumed?.()
     }
   }, [])
 
@@ -164,6 +211,8 @@ export function useConversation(options?: UseConversationOptions): ConversationS
     isActive,
     isListening,
     isThinking,
+    isContinuousMode,
+    isSpeechDetected,
     conversation,
     currentTranscript,
     error,
