@@ -127,7 +127,8 @@ export default function AvatarPreview3D({ avatarUrl, onLoaded, onError }: Avatar
       undefined,
       (error) => {
         console.error('[AvatarPreview3D] Failed to load model:', error)
-        onError?.(error.message || 'Failed to load avatar model')
+        const errorMessage = error instanceof Error ? error.message : 'Failed to load avatar model'
+        onError?.(errorMessage)
       }
     )
 
