@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import type { AvatarCanvasHandle } from "@/components/AvatarCanvas";
 import { Mic, Loader2, Volume2 } from "lucide-react";
@@ -77,25 +77,6 @@ export default function OverlayPage() {
     };
   }, [mounted]);
 
-  // Handle audio playback via avatar
-  const handleAudioReceived = useCallback(async ({ text, audioBase64 }: { text: string; audioBase64: string | null }) => {
-    if (audioBase64 && avatarRef.current) {
-      try {
-        setState("speaking");
-        // Decode base64 to raw ArrayBuffer
-        const binary = atob(audioBase64);
-        const bytes = new Uint8Array(binary.length);
-        for (let i = 0; i < binary.length; i++) {
-          bytes[i] = binary.charCodeAt(i);
-        }
-        console.log("[OverlayPage] Sending", bytes.length, "bytes to TalkingHead");
-        await avatarRef.current.speakAudio(bytes.buffer as ArrayBuffer, text);
-      } catch (err) {
-        console.error("[OverlayPage] Failed to play audio:", err);
-      }
-    }
-  }, []);
-
   // Event listeners
   useEffect(() => {
     if (!mounted) return;
@@ -145,11 +126,10 @@ export default function OverlayPage() {
         setState("thinking");
       });
 
-      const unsubscribeResponse = Events.On("conversation:response", async (event: any) => {
-        const { text, audio } = event.data || {};
-        if (audio) {
-          await handleAudioReceived({ text: text || "", audioBase64: audio });
-        }
+      const unsubscribeResponse = Events.On("conversation:response", async () => {
+        // Update visual state only — audio playback is handled by the main window
+        // to avoid both windows playing audio simultaneously.
+        setState("speaking");
         // In continuous mode, backend will emit listening-resumed
         // In non-continuous mode, stay in speaking briefly then reset
         if (!isContinuousMode) {
@@ -181,7 +161,7 @@ export default function OverlayPage() {
     return () => {
       cleanupFns.forEach((fn) => fn());
     };
-  }, [mounted, handleAudioReceived, isContinuousMode]);
+  }, [mounted, isContinuousMode]);
 
   if (!mounted) {
     return null;

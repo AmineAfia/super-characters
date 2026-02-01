@@ -125,10 +125,11 @@ export function useConversation(options?: UseConversationOptions): ConversationS
         if (ttsConfigured) {
           const audioBase64 = await SynthesizeSpeech(fullText)
           
-          // Emit conversation:response event for overlay window to receive
-          // The overlay listens for this event to play audio and update its state
+          // Emit conversation:response event for overlay window to update its state
+          // Audio is excluded here because the main window plays it via the direct callback below.
+          // Including audio would cause both windows to play simultaneously.
           const { Events } = await import("@wailsio/runtime")
-          Events.Emit("conversation:response", { text: fullText, audio: audioBase64 })
+          Events.Emit("conversation:response", { text: fullText, audio: null })
           
           if (onAudioReceivedRef.current) {
             onAudioReceivedRef.current({
