@@ -19,6 +19,9 @@ type Settings struct {
 	PressAndTalkHotkey string `json:"pressAndTalkHotkey"`
 	SilenceDurationMs  int    `json:"silenceDurationMs"` // Silence duration for VAD (default: 300ms)
 
+	// Custom avatar
+	ActiveAvatarPath string `json:"activeAvatarPath,omitempty"`
+
 	// Pipedream Connect settings
 	PipedreamClientID     string `json:"pipedreamClientId"`
 	PipedreamClientSecret string `json:"pipedreamClientSecret"`
@@ -233,6 +236,22 @@ func (s *SettingsService) GetPipedreamEnvironment() string {
 		return "development"
 	}
 	return s.settings.PipedreamEnvironment
+}
+
+// SetActiveAvatarPath updates the active avatar path.
+func (s *SettingsService) SetActiveAvatarPath(path string) error {
+	s.mu.Lock()
+	s.settings.ActiveAvatarPath = path
+	s.mu.Unlock()
+
+	return s.save()
+}
+
+// GetActiveAvatarPath returns the active avatar path.
+func (s *SettingsService) GetActiveAvatarPath() string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.settings.ActiveAvatarPath
 }
 
 // IsPipedreamConfigured returns whether Pipedream credentials are set.

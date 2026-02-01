@@ -21,6 +21,11 @@ export class Settings {
     "silenceDurationMs": number;
 
     /**
+     * Custom avatar
+     */
+    "activeAvatarPath"?: string;
+
+    /**
      * Pipedream Connect settings
      */
     "pipedreamClientId": string;

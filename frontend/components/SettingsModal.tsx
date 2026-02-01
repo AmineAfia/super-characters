@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import {
   Dialog,
   DialogContent,
@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Loader2, Check, ExternalLink, Settings, Link2 } from "lucide-react"
+import { Loader2, Check, ExternalLink, Settings, Link2, Camera, User, Trash2, AlertTriangle } from "lucide-react"
 import ComponentBrowser from "./ComponentBrowser"
 
 interface SettingsModalProps {
@@ -21,7 +21,7 @@ interface SettingsModalProps {
   onConnectionChange?: () => void
 }
 
-type TabId = "general" | "apps"
+type TabId = "general" | "avatar" | "apps"
 
 export default function SettingsModal({ open, onOpenChange, onConnectionChange }: SettingsModalProps) {
   const [activeTab, setActiveTab] = useState<TabId>("general")
@@ -32,10 +32,31 @@ export default function SettingsModal({ open, onOpenChange, onConnectionChange }
   const [isSaving, setIsSaving] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
 
+  // Avatar state
+  const [avatars, setAvatars] = useState<Array<{ id: string; path: string; thumbnail: string; createdAt: number }>>([])
+  const [activeAvatarPath, setActiveAvatarPath] = useState("")
+  const [isCapturing, setIsCapturing] = useState(false)
+  const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null)
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [avatarError, setAvatarError] = useState<string | null>(null)
+  const [avatarSuccess, setAvatarSuccess] = useState<string | null>(null)
+  const [depsWarning, setDepsWarning] = useState<string | null>(null)
+  const videoRef = useRef<HTMLVideoElement | null>(null)
+  const streamRef = useRef<MediaStream | null>(null)
+
   // Load current settings when modal opens
   useEffect(() => {
     if (open) {
       loadSettings()
+      loadAvatars()
+    } else {
+      // Stop camera when modal closes
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(t => t.stop())
+        streamRef.current = null
+      }
+      setIsCapturing(false)
+      setCapturedPhoto(null)
     }
   }, [open])
 
@@ -91,8 +112,108 @@ export default function SettingsModal({ open, onOpenChange, onConnectionChange }
     }
   }
 
+  const loadAvatars = async () => {
+    try {
+      const { GetCustomAvatars, GetActiveAvatarPath: GetActivePath, CheckAvatarDependencies } = await import("@/bindings/super-characters/app")
+      const list = await GetCustomAvatars()
+      setAvatars(list || [])
+      const activePath = await GetActivePath()
+      setActiveAvatarPath(activePath || "")
+      const depCheck = await CheckAvatarDependencies()
+      setDepsWarning(depCheck || null)
+    } catch (e) {
+      console.error("Failed to load avatars:", e)
+    }
+  }
+
+  const startCamera = async () => {
+    setAvatarError(null)
+    setAvatarSuccess(null)
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: 640, height: 480 } })
+      streamRef.current = stream
+      setIsCapturing(true)
+    } catch (e: any) {
+      setAvatarError("Camera access denied: " + (e.message || "Unknown error"))
+    }
+  }
+
+  const capturePhoto = () => {
+    if (!videoRef.current) return
+    const canvas = document.createElement("canvas")
+    canvas.width = videoRef.current.videoWidth || 640
+    canvas.height = videoRef.current.videoHeight || 480
+    const ctx = canvas.getContext("2d")
+    if (!ctx) return
+    ctx.drawImage(videoRef.current, 0, 0)
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.9)
+    setCapturedPhoto(dataUrl)
+    // Stop camera
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => t.stop())
+      streamRef.current = null
+    }
+    setIsCapturing(false)
+  }
+
+  const generateAvatar = async () => {
+    if (!capturedPhoto) return
+    setIsGenerating(true)
+    setAvatarError(null)
+    setAvatarSuccess(null)
+    try {
+      const { GenerateAvatarFromPhoto } = await import("@/bindings/super-characters/app")
+      // Strip data URL prefix to get pure base64
+      const base64 = capturedPhoto.split(",")[1]
+      const result = await GenerateAvatarFromPhoto(base64)
+      if (result) {
+        setCapturedPhoto(null)
+        await loadAvatars()
+        // Auto-select the newly generated avatar
+        await selectAvatar(result.id)
+        setAvatarSuccess("Avatar created and selected! Close settings to apply.")
+      }
+    } catch (e: any) {
+      setAvatarError("Generation failed: " + (e.message || "Unknown error"))
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
+  const selectAvatar = async (avatarId: string) => {
+    try {
+      const { SetActiveAvatar, GetActiveAvatarPath: GetActivePath } = await import("@/bindings/super-characters/app")
+      await SetActiveAvatar(avatarId)
+      const path = await GetActivePath()
+      setActiveAvatarPath(path || "")
+    } catch (e) {
+      console.error("Failed to set avatar:", e)
+    }
+  }
+
+  const resetToDefault = async () => {
+    try {
+      const { SetActiveAvatar } = await import("@/bindings/super-characters/app")
+      await SetActiveAvatar("")
+      setActiveAvatarPath("")
+    } catch (e) {
+      console.error("Failed to reset avatar:", e)
+    }
+  }
+
+  const deleteAvatar = async (avatarId: string) => {
+    try {
+      const { DeleteCustomAvatar } = await import("@/bindings/super-characters/app")
+      await DeleteCustomAvatar(avatarId)
+      await loadAvatars()
+    } catch (e) {
+      console.error("Failed to delete avatar:", e)
+    }
+  }
+
   const tabs = [
     { id: "general" as const, label: "General", icon: Settings },
+    { id: "avatar" as const, label: "Avatar", icon: User },
     { id: "apps" as const, label: "Connected Apps", icon: Link2 },
   ]
 
@@ -226,12 +347,183 @@ export default function SettingsModal({ open, onOpenChange, onConnectionChange }
             </div>
           )}
 
+          {activeTab === "avatar" && (
+            <div className="grid gap-4">
+              {/* Dependency warning */}
+              {depsWarning && (
+                <div className="flex items-start gap-3 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+                  <AlertTriangle className="h-4 w-4 text-yellow-500 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-yellow-500">Python dependencies missing</p>
+                    <p className="text-xs text-muted-foreground mt-1">{depsWarning}</p>
+                    <p className="text-xs text-muted-foreground mt-1.5">Install with:</p>
+                    <code className="text-xs text-muted-foreground block mt-0.5 bg-black/20 rounded px-2 py-1 select-all">pip3 install mediapipe opencv-python numpy Pillow pygltflib</code>
+                  </div>
+                </div>
+              )}
+
+              {/* Camera capture */}
+              {!capturedPhoto && !isCapturing && (
+                <div className="flex flex-col items-center gap-3 p-6 border border-dashed border-border rounded-lg">
+                  <Camera className="h-8 w-8 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">Take a photo to generate your avatar</p>
+                  <Button onClick={startCamera} disabled={!!depsWarning}>
+                    <Camera className="mr-2 h-4 w-4" />
+                    Open Camera
+                  </Button>
+                </div>
+              )}
+
+              {/* Camera preview */}
+              {isCapturing && (
+                <div className="flex flex-col items-center gap-3">
+                  <div className="relative w-full max-w-[320px] aspect-[4/3] rounded-lg overflow-hidden bg-black">
+                    {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+                    <video
+                      ref={(el) => {
+                        videoRef.current = el
+                        if (el && streamRef.current) {
+                          el.srcObject = streamRef.current
+                        }
+                      }}
+                      autoPlay
+                      playsInline
+                      muted
+                      webkit-playsinline="true"
+                      className="w-full h-full object-cover"
+                      style={{ WebkitTransform: "scaleX(-1)", transform: "scaleX(-1)" }}
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" onClick={() => {
+                      if (streamRef.current) {
+                        streamRef.current.getTracks().forEach(t => t.stop())
+                        streamRef.current = null
+                      }
+                      setIsCapturing(false)
+                    }}>
+                      Cancel
+                    </Button>
+                    <Button onClick={capturePhoto}>
+                      <Camera className="mr-2 h-4 w-4" />
+                      Capture
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Captured photo preview */}
+              {capturedPhoto && (
+                <div className="flex flex-col items-center gap-3">
+                  <div className="relative w-32 h-32 rounded-full overflow-hidden border-2 border-border">
+                    <img src={capturedPhoto} alt="Captured" className="w-full h-full object-cover" />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" onClick={() => setCapturedPhoto(null)}>
+                      Retake
+                    </Button>
+                    <Button onClick={generateAvatar} disabled={isGenerating}>
+                      {isGenerating ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Generating...
+                        </>
+                      ) : (
+                        "Generate Avatar"
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Error */}
+              {avatarError && (
+                <p className="text-sm text-destructive text-center">{avatarError}</p>
+              )}
+
+              {/* Success */}
+              {avatarSuccess && (
+                <p className="text-sm text-green-500 text-center">{avatarSuccess}</p>
+              )}
+
+              {/* Saved avatars gallery */}
+              {avatars.length > 0 && (
+                <div className="grid gap-2">
+                  <Label>Your Avatars</Label>
+                  <div className="grid grid-cols-4 gap-3">
+                    {/* Default avatar option */}
+                    <button
+                      onClick={resetToDefault}
+                      className={`flex flex-col items-center gap-1.5 p-2 rounded-lg border transition-colors ${
+                        !activeAvatarPath
+                          ? "border-primary bg-primary/10"
+                          : "border-border hover:border-muted-foreground"
+                      }`}
+                    >
+                      <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center">
+                        <User className="h-6 w-6 text-muted-foreground" />
+                      </div>
+                      <span className="text-[10px] text-muted-foreground">Default</span>
+                    </button>
+
+                    {avatars.map((av) => (
+                      <div key={av.id} className="relative group">
+                        <button
+                          onClick={() => selectAvatar(av.id)}
+                          className={`flex flex-col items-center gap-1.5 p-2 rounded-lg border transition-colors w-full ${
+                            activeAvatarPath === av.path
+                              ? "border-primary bg-primary/10"
+                              : "border-border hover:border-muted-foreground"
+                          }`}
+                        >
+                          <div className="w-14 h-14 rounded-full overflow-hidden bg-muted">
+                            {av.thumbnail ? (
+                              <img
+                                src={`data:image/png;base64,${av.thumbnail}`}
+                                alt="Avatar"
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <User className="h-6 w-6 text-muted-foreground" />
+                              </div>
+                            )}
+                          </div>
+                          <span className="text-[10px] text-muted-foreground">
+                            {new Date(av.createdAt * 1000).toLocaleDateString()}
+                          </span>
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); deleteAvatar(av.id) }}
+                          className="absolute -top-1 -right-1 p-1 rounded-full bg-destructive/90 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  {activeAvatarPath && (
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Custom avatar active. Close settings to see it on the main page.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {avatars.length === 0 && !capturedPhoto && !isCapturing && (
+                <p className="text-xs text-muted-foreground text-center">
+                  No custom avatars yet. Take a photo to create one.
+                </p>
+              )}
+            </div>
+          )}
+
           {activeTab === "apps" && (
             <ComponentBrowser onConnectionChange={onConnectionChange} />
           )}
         </div>
 
-        {/* Footer - only show for general tab */}
+        {/* Footer - show for general tab */}
         {activeTab === "general" && (
           <DialogFooter className="border-t border-border pt-4 -mx-6 px-6">
             <Button variant="outline" onClick={() => onOpenChange(false)}>

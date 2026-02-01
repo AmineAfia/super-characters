@@ -234,6 +234,26 @@ const AvatarCanvas = forwardRef<AvatarCanvasHandle, AvatarCanvasProps>(
       }
     }, [avatarUrl, onLoaded, onError])
 
+    // Reset when avatarUrl changes so a new avatar can load
+    const prevUrlRef = useRef(avatarUrl)
+    useEffect(() => {
+      // Only reset if the URL actually changed (skip initial mount)
+      if (prevUrlRef.current === avatarUrl) return
+      prevUrlRef.current = avatarUrl
+
+      console.log('[AvatarCanvas] Avatar URL changed, resetting...')
+      if (headRef.current) {
+        headRef.current.stop()
+        headRef.current = null
+      }
+      // Clear the container so old Three.js canvas is removed
+      if (containerRef.current) {
+        containerRef.current.innerHTML = ''
+      }
+      loadedRef.current = false
+      initializingRef.current = false
+    }, [avatarUrl])
+
     useEffect(() => {
       initAvatar()
 
