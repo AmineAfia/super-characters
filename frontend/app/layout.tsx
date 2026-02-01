@@ -1,20 +1,29 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
+import LiquidGlassFilters from "@/components/LiquidGlassFilters";
 
 import { GeistMono } from "geist/font/mono";
 import { GeistSans } from "geist/font/sans";
-import { Nunito } from "next/font/google";
+import { Inter } from "next/font/google";
 
-const nunito = Nunito({
+// Inter as a close web alternative to SF Pro
+const inter = Inter({
   subsets: ["latin"],
-  variable: "--font-nunito",
+  variable: "--font-sf-pro",
   weight: ["400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
   title: "Super Characters",
-  description: "Super Characters App",
+  description: "Super Characters App - AI Companions with Liquid Glass UI",
+};
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#F2F2F7" },
+    { media: "(prefers-color-scheme: dark)", color: "#000000" },
+  ],
 };
 
 export default function RootLayout({
@@ -25,15 +34,20 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`antialiased ${nunito.variable} ${GeistSans.variable} ${GeistMono.variable}`}
-        style={{ textRendering: "optimizeLegibility" }}
+        className={`antialiased ${inter.variable} ${GeistSans.variable} ${GeistMono.variable} font-sans`}
+        style={{ 
+          textRendering: "optimizeLegibility",
+          WebkitFontSmoothing: "antialiased",
+          MozOsxFontSmoothing: "grayscale",
+        }}
       >
         <ThemeProvider
           attribute="class"
-          defaultTheme="light"
-          enableSystem={false}
+          defaultTheme="system"
+          enableSystem={true}
           disableTransitionOnChange
         >
+          <LiquidGlassFilters />
           <div className="main-layout flex flex-col h-screen overflow-hidden bg-transparent border-0 outline-none ring-0">
             <main className="flex-1 relative overflow-hidden">
               {children}

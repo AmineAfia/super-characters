@@ -8,7 +8,16 @@ const Card = ({
 }: React.HTMLAttributes<HTMLDivElement>) => (
 	<div
 		className={cn(
-			"rounded-xl border bg-card text-card-foreground shadow",
+			// Apple Liquid Glass card styling
+			"relative overflow-hidden",
+			"rounded-2xl",
+			"bg-card backdrop-blur-glass",
+			"border border-glass-border",
+			"shadow-glass",
+			// Specular highlight overlay
+			"before:absolute before:inset-0 before:pointer-events-none",
+			"before:bg-gradient-to-br before:from-white/20 before:via-white/5 before:to-transparent",
+			"before:rounded-[inherit]",
 			className,
 		)}
 		{...props}
@@ -20,7 +29,13 @@ const CardHeader = ({
 	className,
 	...props
 }: React.HTMLAttributes<HTMLDivElement>) => (
-	<div className={cn("flex flex-col space-y-1.5 p-6", className)} {...props} />
+	<div 
+		className={cn(
+			"flex flex-col space-y-1.5 p-6",
+			className
+		)} 
+		{...props} 
+	/>
 );
 CardHeader.displayName = "CardHeader";
 
@@ -29,7 +44,10 @@ const CardTitle = ({
 	...props
 }: React.HTMLAttributes<HTMLHeadingElement>) => (
 	<h3
-		className={cn("font-semibold leading-none tracking-tight", className)}
+		className={cn(
+			"font-semibold text-lg leading-none tracking-tight text-card-foreground",
+			className
+		)}
 		{...props}
 	/>
 );
@@ -39,7 +57,13 @@ const CardDescription = ({
 	className,
 	...props
 }: React.HTMLAttributes<HTMLParagraphElement>) => (
-	<p className={cn("text-sm text-muted-foreground", className)} {...props} />
+	<p 
+		className={cn(
+			"text-sm text-muted-foreground",
+			className
+		)} 
+		{...props} 
+	/>
 );
 CardDescription.displayName = "CardDescription";
 
@@ -55,7 +79,13 @@ const CardFooter = ({
 	className,
 	...props
 }: React.HTMLAttributes<HTMLDivElement>) => (
-	<div className={cn("flex items-center p-6 pt-0", className)} {...props} />
+	<div 
+		className={cn(
+			"flex items-center p-6 pt-0",
+			className
+		)} 
+		{...props} 
+	/>
 );
 CardFooter.displayName = "CardFooter";
 

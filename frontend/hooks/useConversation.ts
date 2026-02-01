@@ -34,6 +34,7 @@ export interface ConversationAudio {
 
 interface UseConversationOptions {
   onAudioReceived?: (audio: ConversationAudio) => void
+  systemPrompt?: string
 }
 
 export function useConversation(options?: UseConversationOptions): ConversationState & ConversationActions {
@@ -50,6 +51,9 @@ export function useConversation(options?: UseConversationOptions): ConversationS
 
   const onAudioReceivedRef = useRef(options?.onAudioReceived)
   onAudioReceivedRef.current = options?.onAudioReceived
+
+  const systemPromptRef = useRef(options?.systemPrompt)
+  systemPromptRef.current = options?.systemPrompt
 
   // Ref to track conversation history for agent
   const conversationHistoryRef = useRef<ConversationTurn[]>([])
@@ -84,7 +88,7 @@ export function useConversation(options?: UseConversationOptions): ConversationS
       }
 
       // Create agent with MCP tools and build messages from conversation history
-      const agent = await createConversationAgentWithMCP()
+      const agent = await createConversationAgentWithMCP(systemPromptRef.current)
       
       // Format as proper messages for the AI SDK
       const messages = conversationHistoryRef.current.map((m) => ({

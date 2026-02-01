@@ -68,6 +68,7 @@ export default function Home() {
     clearConversation,
   } = useConversation({
     onAudioReceived: handleAudioReceived,
+    systemPrompt: selectedCharacter?.systemPrompt,
   });
 
   // Check if conversation APIs are configured
@@ -184,21 +185,30 @@ export default function Home() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-background relative overflow-hidden">
-      {/* Decorative bubbles */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="bubble bubble-lg top-20 left-10" style={{ animationDelay: '0s' }} />
-        <div className="bubble bubble-md top-40 right-16" style={{ animationDelay: '2s' }} />
-        <div className="bubble bubble-sm bottom-32 left-24" style={{ animationDelay: '4s' }} />
-        <div className="bubble bubble-md bottom-20 right-32" style={{ animationDelay: '1s' }} />
-      </div>
+    <div
+      className="flex flex-col h-full bg-background relative overflow-hidden"
+      style={{
+        '--character-color': selectedCharacter?.color || '#007AFF',
+      } as React.CSSProperties}
+    >
+      {/* Character-reactive ambient glow (gradient mesh is in layout) */}
+      <div
+        className="absolute inset-0 pointer-events-none transition-all duration-700 ease-out"
+        style={{
+          background: selectedCharacter
+            ? `radial-gradient(ellipse 70% 50% at 50% 30%, ${selectedCharacter.color}15, transparent 70%)`
+            : undefined,
+        }}
+      />
 
-      {/* Permission Warnings */}
+      {/* Permission Warnings - Liquid Glass style alerts */}
       <div className="flex flex-col relative z-10">
         {hasAccessibility === false && (
-          <div className="flex-shrink-0 p-4 bg-gold/30 border-b border-gold/40 backdrop-blur-sm">
+          <div className="flex-shrink-0 p-4 glass-subtle border-b border-system-orange/20">
             <div className="flex items-center gap-3 max-w-3xl mx-auto">
-              <ShieldAlert className="h-5 w-5 text-foreground/70 flex-shrink-0" />
+              <div className="p-2 rounded-xl bg-system-orange/15">
+                <ShieldAlert className="h-4 w-4 text-system-orange" />
+              </div>
               <div className="flex-1">
                 <p className="text-sm font-semibold text-foreground">
                   Accessibility permission required
@@ -211,7 +221,6 @@ export default function Home() {
                 size="sm" 
                 variant="outline" 
                 onClick={openAccessibilitySettings}
-                className="border-primary/50 text-foreground hover:bg-primary/10"
               >
                 Open Settings
               </Button>
@@ -220,9 +229,11 @@ export default function Home() {
         )}
 
         {micPermission === "denied" && (
-          <div className="flex-shrink-0 p-4 bg-rose/30 border-b border-rose/40 backdrop-blur-sm">
+          <div className="flex-shrink-0 p-4 glass-subtle border-b border-destructive/20">
             <div className="flex items-center gap-3 max-w-3xl mx-auto">
-              <Mic className="h-5 w-5 text-destructive flex-shrink-0" />
+              <div className="p-2 rounded-xl bg-destructive/15">
+                <Mic className="h-4 w-4 text-destructive" />
+              </div>
               <div className="flex-1">
                 <p className="text-sm font-semibold text-foreground">
                   Microphone permission denied
@@ -235,7 +246,6 @@ export default function Home() {
                 size="sm" 
                 variant="outline" 
                 onClick={openMicSettings}
-                className="border-destructive/50 text-foreground hover:bg-destructive/10"
               >
                 Open Settings
               </Button>
@@ -244,111 +254,126 @@ export default function Home() {
         )}
       </div>
 
-      {/* Header */}
-      <div className="flex-shrink-0 p-6 pb-4 border-b border-border/30 glass relative z-10">
-        <div className="flex items-center justify-between max-w-3xl mx-auto w-full">
-          <div className="flex items-center gap-4">
-            {/* Back to character select button */}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setShowCharacterSelect(true)}
-              className="text-muted-foreground hover:text-foreground rounded-xl"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            
-            <div className="relative">
-              {selectedCharacter ? (
-                <div 
-                  className="h-12 w-12 rounded-2xl shadow-soft overflow-hidden border-2"
-                  style={{ borderColor: selectedCharacter.color }}
-                >
-                  <img 
-                    src={selectedCharacter.thumbnailUrl}
-                    alt={selectedCharacter.name}
-                    className="w-full h-full object-cover"
-                    crossOrigin="anonymous"
-                  />
-                </div>
-              ) : (
-                <img 
-                  src="/logo.png" 
-                  alt="Super Characters" 
-                  className="h-12 w-12 rounded-2xl shadow-soft hover:shadow-soft-lg transition-shadow duration-300" 
-                />
-              )}
-              <div className="absolute -inset-1 rounded-2xl bg-primary/20 blur-md -z-10" />
-            </div>
-            <div className="space-y-1">
-              <h1 className="text-xl font-bold tracking-tight text-foreground">
-                {selectedCharacter?.name || "Super Characters"}
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                {selectedCharacter ? (
-                  <span className="flex items-center gap-2">
-                    <span>{selectedCharacter.voice}</span>
-                    <span className="text-muted-foreground/50">|</span>
-                    <span>{selectedCharacter.model}</span>
-                  </span>
-                ) : (
-                  <>Hold <kbd className="px-2 py-1 text-xs rounded-lg bg-muted/80 font-mono text-foreground/80 border border-border/50">Cmd+Shift+Space</kbd> to dictate</>
-                )}
-              </p>
-            </div>
-          </div>
-          
-          {/* Status indicator */}
-          <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setIsSettingsOpen(true)}
-              className="text-muted-foreground hover:text-foreground rounded-xl"
-            >
-              <Settings className="h-4 w-4" />
-            </Button>
-            {(isConversationActive ? conversation.length > 0 : messages.length > 0) && (
+      {/* Header - Liquid Glass panel */}
+      <div className="flex-shrink-0 glass border-b border-glass-border relative z-10">
+        <div className="p-5 pb-4">
+          <div className="flex items-center justify-between max-w-3xl mx-auto w-full">
+            <div className="flex items-center gap-4">
+              {/* Back to character select button */}
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={isConversationActive ? clearConversation : clearMessages}
-                className="text-muted-foreground hover:text-foreground rounded-xl"
+                onClick={() => setShowCharacterSelect(true)}
+                className="rounded-full"
               >
-                <Trash2 className="h-4 w-4" />
+                <ArrowLeft className="h-5 w-5" />
               </Button>
-            )}
-            <div className={`
-              flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-semibold shadow-soft
-              ${isReady 
-                ? 'bg-mint/30 text-foreground border border-mint/50' 
-                : 'bg-gold/30 text-foreground border border-gold/50'
-              }
-            `}>
-              <span className={`w-2 h-2 rounded-full ${isReady ? 'bg-mint' : 'bg-gold animate-pulse'}`} />
-              {isReady ? 'Ready' : 'Loading...'}
+              
+              <div className="relative">
+                {selectedCharacter ? (
+                  <div
+                    className="h-11 w-11 rounded-2xl shadow-glass overflow-hidden border-2"
+                    style={{
+                      borderColor: selectedCharacter.color,
+                      boxShadow: `0 0 12px ${selectedCharacter.color}40, 0 0 24px ${selectedCharacter.color}20`,
+                    }}
+                  >
+                    <img 
+                      src={selectedCharacter.thumbnailUrl}
+                      alt={selectedCharacter.name}
+                      className="w-full h-full object-cover"
+                      crossOrigin="anonymous"
+                    />
+                  </div>
+                ) : (
+                  <div className="h-11 w-11 rounded-2xl shadow-glass overflow-hidden bg-card">
+                    <img 
+                      src="/logo.png" 
+                      alt="Super Characters" 
+                      className="w-full h-full object-cover" 
+                    />
+                  </div>
+                )}
+                <div className="absolute -inset-2 rounded-2xl bg-primary/8 blur-xl -z-10" />
+              </div>
+              <div className="space-y-0.5">
+                <h1 className="text-lg font-semibold tracking-tight text-foreground">
+                  {selectedCharacter?.name || "Super Characters"}
+                </h1>
+                <p className="text-sm text-muted-foreground">
+                  {selectedCharacter ? (
+                    <span className="flex items-center gap-2">
+                      <span className="px-2 py-0.5 rounded-md bg-muted/60 text-xs">{selectedCharacter.voice}</span>
+                      <span className="px-2 py-0.5 rounded-md bg-muted/60 text-xs">{selectedCharacter.model}</span>
+                    </span>
+                  ) : (
+                    <>Hold <kbd className="px-2 py-0.5 text-xs rounded-lg bg-muted/80 font-mono text-foreground/70 border border-border/50">Cmd+Shift+Space</kbd> to dictate</>
+                  )}
+                </p>
+              </div>
+            </div>
+            
+            {/* Status indicator */}
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsSettingsOpen(true)}
+                className="rounded-full"
+              >
+                <Settings className="h-4 w-4" />
+              </Button>
+              {(isConversationActive ? conversation.length > 0 : messages.length > 0) && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={isConversationActive ? clearConversation : clearMessages}
+                  className="rounded-full"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
+              {/* Status pill - Liquid Glass style */}
+              <div className={`
+                status-indicator
+                ${isReady 
+                  ? 'status-indicator-success' 
+                  : 'status-indicator-warning'
+                }
+              `}>
+                <span className={`status-dot ${!isReady && 'status-dot-pulse'}`} />
+                {isReady ? 'Ready' : 'Loading...'}
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* 3D Avatar */}
-      <div className="relative h-[300px] flex-shrink-0 bg-gradient-to-b from-lavender-light/50 to-cream/50 dark:from-muted/30 dark:to-background/50">
-        {/* Radial gradient overlay for dreamy effect */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(245,168,151,0.1)_0%,transparent_70%)]" />
+      {/* 3D Avatar - with subtle depth effect */}
+      <div className="relative h-[300px] flex-shrink-0">
+        {/* Enhanced ambient gradient with character color */}
+        <div className="absolute inset-0 bg-gradient-to-b from-muted/10 to-transparent" />
+        <div
+          className="absolute inset-0 transition-all duration-500"
+          style={{
+            background: selectedCharacter
+              ? `radial-gradient(ellipse 70% 60% at 50% 100%, ${selectedCharacter.color}30, transparent 70%)`
+              : 'radial-gradient(ellipse 70% 60% at 50% 100%, rgba(0,122,255,0.15), transparent 70%)',
+          }}
+        />
         
         {isAvatarLoading && (
-          <div className="absolute inset-0 flex items-center justify-center z-10 glass">
-            <div className="flex flex-col items-center gap-4 p-6 rounded-3xl bg-card/80 shadow-soft">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <div className="absolute inset-0 flex items-center justify-center z-10 glass-subtle">
+            <div className="flex flex-col items-center gap-4 p-6 rounded-2xl glass shadow-glass">
+              <Loader2 className="h-7 w-7 animate-spin text-primary" />
               <span className="text-sm font-medium text-muted-foreground">Loading avatar...</span>
             </div>
           </div>
         )}
         {avatarError && (
           <div className="absolute inset-0 flex items-center justify-center z-10">
-            <div className="p-4 rounded-2xl bg-destructive/10 border border-destructive/30">
-              <span className="text-sm text-destructive">{avatarError}</span>
+            <div className="p-4 rounded-2xl status-indicator-error">
+              <span className="text-sm">{avatarError}</span>
             </div>
           </div>
         )}
@@ -359,16 +384,17 @@ export default function Home() {
           onError={(err) => { setIsAvatarLoading(false); setAvatarError(err); }}
         />
 
-        {/* Status indicator overlay for conversation mode */}
+        {/* Status indicator overlay for conversation mode - Liquid Glass pill */}
         {isConversationActive && (
           <div className="absolute bottom-4 left-4 right-4 flex justify-center">
             <div className={`
-              inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium
+              inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium
+              backdrop-blur-glass shadow-glass border
               ${isListening
-                ? 'bg-red-500/90 text-white'
+                ? 'bg-system-red/85 text-white border-system-red/30'
                 : isThinking
-                  ? 'bg-yellow-500/90 text-white'
-                  : 'bg-gray-900/70 text-white'
+                  ? 'bg-system-orange/85 text-white border-system-orange/30'
+                  : 'bg-card/85 text-foreground border-glass-border'
               }
             `}>
               {isListening ? (
@@ -383,7 +409,7 @@ export default function Home() {
                 </>
               ) : (
                 <>
-                  <MicOff className="h-4 w-4" />
+                  <MicOff className="h-4 w-4 opacity-60" />
                   <span>Press hotkey to speak</span>
                 </>
               )}
@@ -392,8 +418,8 @@ export default function Home() {
         )}
       </div>
 
-      {/* Chat Messages */}
-      <div className="flex-1 overflow-y-auto p-6 relative z-10">
+      {/* Chat Messages - with glass scrollbar */}
+      <div className="flex-1 overflow-y-auto p-6 relative z-10 glass-scrollbar">
         <div className="max-w-3xl mx-auto space-y-4">
           {isConversationActive ? (
             <>
@@ -401,13 +427,13 @@ export default function Home() {
               {conversation.map((turn, i) => (
                 <div
                   key={i}
-                  className={`flex ${turn.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                  className={`flex ${turn.role === 'user' ? 'justify-end' : 'justify-start'} animate-liquid-slide-up`}
                 >
                   <div className={`
                     max-w-[80%] rounded-2xl px-4 py-2.5 text-sm
                     ${turn.role === 'user'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-muted text-foreground'
+                      ? 'bg-primary text-primary-foreground shadow-glass-sm'
+                      : 'glass-card py-3 px-4'
                     }
                   `}>
                     {turn.text}
@@ -417,8 +443,8 @@ export default function Home() {
 
               {/* Current transcript (while listening) */}
               {conversationTranscript && (
-                <div className="flex justify-end">
-                  <div className="max-w-[80%] rounded-2xl px-4 py-2.5 text-sm bg-blue-600/50 text-white/80 italic">
+                <div className="flex justify-end animate-liquid-fade-in">
+                  <div className="max-w-[80%] rounded-2xl px-4 py-2.5 text-sm bg-primary/60 text-primary-foreground/90 italic backdrop-blur-sm">
                     {conversationTranscript}
                   </div>
                 </div>
@@ -426,18 +452,18 @@ export default function Home() {
 
               {/* Streaming response or thinking indicator */}
               {isThinking && (
-                <div className="flex justify-start">
+                <div className="flex justify-start animate-liquid-slide-up">
                   {currentResponse ? (
-                    <div className="max-w-[80%] rounded-2xl px-4 py-2.5 text-sm bg-muted text-foreground">
+                    <div className="max-w-[80%] rounded-2xl px-4 py-3 glass-card text-foreground text-sm">
                       {currentResponse}
-                      <span className="inline-block w-1.5 h-4 ml-1 bg-foreground/60 animate-pulse" />
+                      <span className="inline-block w-1 h-4 ml-1 bg-primary rounded-full animate-pulse" />
                     </div>
                   ) : (
-                    <div className="rounded-2xl px-4 py-2.5 bg-muted">
-                      <div className="flex gap-1">
-                        <span className="w-2 h-2 bg-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                        <span className="w-2 h-2 bg-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                        <span className="w-2 h-2 bg-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                    <div className="rounded-2xl px-5 py-3 glass-card">
+                      <div className="flex gap-1.5">
+                        <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                       </div>
                     </div>
                   )}
@@ -448,29 +474,29 @@ export default function Home() {
             </>
           ) : (
             <>
-              {/* Transcription Mode */}
+              {/* Transcription Mode - Empty state */}
               {messages.length === 0 && !isRecording && !transcriptionTranscript && (
-                <div className="flex flex-col items-center justify-center h-64 text-center gap-4">
-                  <div className="p-4 rounded-full bg-muted/50">
-                    <MessageSquare className="h-10 w-10 text-muted-foreground/50" />
+                <div className="flex flex-col items-center justify-center h-64 text-center gap-5">
+                  <div className="p-5 rounded-full glass-subtle">
+                    <MessageSquare className="h-10 w-10 text-muted-foreground/40" />
                   </div>
-                  <div>
+                  <div className="space-y-1.5">
                     <p className="text-sm font-medium text-muted-foreground">
                       No transcriptions yet
                     </p>
-                    <p className="text-xs text-muted-foreground/70 mt-1">
+                    <p className="text-xs text-muted-foreground/60">
                       Press and hold the hotkey to start dictating
                     </p>
                   </div>
                 </div>
               )}
 
-              {/* Transcription messages */}
+              {/* Transcription messages - Liquid Glass bubbles */}
               {messages.map((message) => (
-                <div key={message.id} className="flex justify-start">
-                  <div className="max-w-[85%] rounded-2xl px-4 py-3 bg-muted text-foreground">
-                    <p className="text-sm leading-relaxed">{message.text}</p>
-                    <p className="text-[10px] text-muted-foreground mt-1.5">
+                <div key={message.id} className="flex justify-start animate-liquid-slide-up">
+                  <div className="max-w-[85%] rounded-2xl px-4 py-3 glass-card">
+                    <p className="text-sm leading-relaxed text-card-foreground">{message.text}</p>
+                    <p className="text-[10px] text-muted-foreground mt-2">
                       {new Date(message.timestamp).toLocaleTimeString()}
                     </p>
                   </div>
@@ -479,8 +505,8 @@ export default function Home() {
 
               {/* Current transcript (while recording) */}
               {transcriptionTranscript && (
-                <div className="flex justify-start">
-                  <div className="max-w-[85%] rounded-2xl px-4 py-3 bg-muted/50 text-foreground/70 italic border border-dashed border-border">
+                <div className="flex justify-start animate-liquid-fade-in">
+                  <div className="max-w-[85%] rounded-2xl px-4 py-3 glass-subtle text-foreground/80 italic border border-dashed border-border/50">
                     <p className="text-sm leading-relaxed">{transcriptionTranscript}</p>
                   </div>
                 </div>
@@ -488,25 +514,27 @@ export default function Home() {
 
               {/* Typing indicator (while recording but no transcript yet) */}
               {isRecording && !transcriptionTranscript && (
-                <div className="flex justify-start">
-                  <div className="rounded-2xl px-4 py-3 bg-muted">
-                    <div className="flex items-center gap-2">
-                      <Mic className="h-4 w-4 text-red-500 animate-pulse" />
-                      <div className="flex gap-1">
+                <div className="flex justify-start animate-liquid-fade-in">
+                  <div className="rounded-2xl px-4 py-3 glass-card">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-1.5 rounded-full bg-system-red/15">
+                        <Mic className="h-3.5 w-3.5 text-system-red animate-pulse" />
+                      </div>
+                      <div className="flex gap-1.5">
                         <span 
-                          className="w-2 h-2 bg-foreground/40 rounded-full animate-bounce" 
+                          className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-bounce" 
                           style={{ animationDelay: '0ms' }} 
                         />
                         <span 
-                          className="w-2 h-2 bg-foreground/40 rounded-full animate-bounce" 
+                          className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-bounce" 
                           style={{ animationDelay: '150ms' }} 
                         />
                         <span 
-                          className="w-2 h-2 bg-foreground/40 rounded-full animate-bounce" 
+                          className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-bounce" 
                           style={{ animationDelay: '300ms' }} 
                         />
                       </div>
-                      <span className="text-xs text-muted-foreground ml-1">Listening...</span>
+                      <span className="text-xs text-muted-foreground font-medium">Listening...</span>
                     </div>
                   </div>
                 </div>
@@ -518,11 +546,15 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Footer hint */}
-      <div className="flex-shrink-0 p-4 border-t border-border/30 glass relative z-10">
-        <div className="max-w-3xl mx-auto flex items-center justify-center gap-2 text-xs text-muted-foreground">
-          <Mic className="h-3.5 w-3.5 text-primary/60" />
-          <span className="font-medium">Hold <kbd className="px-2 py-1 rounded-lg bg-muted/80 font-mono text-[10px] text-foreground/80 border border-border/50">Cmd+Shift+Space</kbd> to record</span>
+      {/* Footer hint - Liquid Glass bar */}
+      <div className="flex-shrink-0 glass border-t border-glass-border relative z-10">
+        <div className="p-4">
+          <div className="max-w-3xl mx-auto flex items-center justify-center gap-2.5 text-xs text-muted-foreground">
+            <div className="p-1.5 rounded-full bg-primary/10">
+              <Mic className="h-3 w-3 text-primary" />
+            </div>
+            <span className="font-medium">Hold <kbd className="px-2 py-1 rounded-lg glass-subtle font-mono text-[10px] text-foreground/80 border border-border/30">Cmd+Shift+Space</kbd> to record</span>
+          </div>
         </div>
       </div>
 
