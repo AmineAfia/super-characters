@@ -76,6 +76,13 @@ export function GetLanguages(): $CancellablePromise<string[]> {
 }
 
 /**
+ * GetNowPlaying returns information about the currently playing track.
+ */
+export function GetNowPlaying(): $CancellablePromise<string> {
+    return $Call.ByID(3484607849);
+}
+
+/**
  * GetPipedreamConnectLinkURL returns a Connect Link URL for connecting an app.
  */
 export function GetPipedreamConnectLinkURL(externalUserID: string, appSlug: string): $CancellablePromise<string> {
@@ -196,10 +203,24 @@ export function ListPipedreamConnectedAccounts(externalUserID: string): $Cancell
 }
 
 /**
+ * NextTrack skips to the next track on Spotify or Apple Music.
+ */
+export function NextTrack(): $CancellablePromise<string> {
+    return $Call.ByID(1520546103);
+}
+
+/**
  * OpenAccessibilitySettings opens System Settings to the Accessibility pane
  */
 export function OpenAccessibilitySettings(): $CancellablePromise<void> {
     return $Call.ByID(2298907446);
+}
+
+/**
+ * OpenApplication opens (or activates) a macOS application by name.
+ */
+export function OpenApplication(name: string): $CancellablePromise<string> {
+    return $Call.ByID(2601245785, name);
 }
 
 /**
@@ -222,6 +243,20 @@ export function OpenPipedreamConnectLink(externalUserID: string, appSlug: string
  */
 export function PauseListening(): $CancellablePromise<void> {
     return $Call.ByID(2537858346);
+}
+
+/**
+ * PlayPauseMusic toggles play/pause on Spotify or Apple Music (whichever is running).
+ */
+export function PlayPauseMusic(): $CancellablePromise<string> {
+    return $Call.ByID(674138558);
+}
+
+/**
+ * PreviousTrack goes back to the previous track on Spotify or Apple Music.
+ */
+export function PreviousTrack(): $CancellablePromise<string> {
+    return $Call.ByID(317391255);
 }
 
 /**
@@ -259,6 +294,14 @@ export function ResizeOverlay(width: number, height: number): $CancellablePromis
  */
 export function ResumeListening(): $CancellablePromise<void> {
     return $Call.ByID(1650047363);
+}
+
+/**
+ * RunAppleScript executes an arbitrary AppleScript string and returns the result.
+ * The script runs with a 10-second timeout.
+ */
+export function RunAppleScript(script: string): $CancellablePromise<string> {
+    return $Call.ByID(748173797, script);
 }
 
 /**
@@ -315,6 +358,13 @@ export function SetSelectedLanguage(language: string): $CancellablePromise<void>
  */
 export function SetSilenceDurationMs(durationMs: number): $CancellablePromise<string> {
     return $Call.ByID(2930594590, durationMs);
+}
+
+/**
+ * SetVolume sets the system output volume (0–100).
+ */
+export function SetVolume(level: number): $CancellablePromise<string> {
+    return $Call.ByID(1458705221, level);
 }
 
 /**

@@ -104,12 +104,21 @@ export default function CharacterCard({
             boxShadow: `0 0 20px ${character.color}50, 0 0 40px ${character.color}25`,
           } : undefined}
         >
-          <img
-            src={character.thumbnailUrl}
-            alt={character.name}
-            className="w-full h-full object-cover"
-            crossOrigin="anonymous"
-          />
+          {character.thumbnailUrl ? (
+            <img
+              src={character.thumbnailUrl}
+              alt={character.name}
+              className="w-full h-full object-cover"
+              crossOrigin="anonymous"
+            />
+          ) : (
+            <div
+              className="w-full h-full flex items-center justify-center text-white font-bold text-2xl"
+              style={{ backgroundColor: character.color }}
+            >
+              {character.name.charAt(0)}
+            </div>
+          )}
           {/* Overlay glow on selected */}
           {isSelected && (
             <div
