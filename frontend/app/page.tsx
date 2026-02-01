@@ -68,6 +68,7 @@ export default function Home() {
     clearConversation,
   } = useConversation({
     onAudioReceived: handleAudioReceived,
+    systemPrompt: selectedCharacter?.systemPrompt,
   });
 
   // Check if conversation APIs are configured

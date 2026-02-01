@@ -72,44 +72,46 @@
 
 .dark {
 	/* Apple Liquid Glass Design System - Dark Mode */
+	/* Following Apple's Beta 3+ adjustments: more opaque chrome for readability */
 	--background: transparent;
 	--background-solid: #000000;
-	--foreground: #FFFFFF;
-	--card: rgba(44, 44, 46, 0.40);
-	--card-foreground: #FFFFFF;
-	--popover: rgba(44, 44, 46, 0.55);
-	--popover-foreground: #FFFFFF;
+	--foreground: #F5F5F7;
+	--card: rgba(28, 28, 30, 0.78);
+	--card-foreground: #F5F5F7;
+	--popover: rgba(28, 28, 30, 0.82);
+	--popover-foreground: #F5F5F7;
 	--primary: #0A84FF;
 	--primary-foreground: #FFFFFF;
-	--secondary: rgba(120, 120, 128, 0.24);
-	--secondary-foreground: #FFFFFF;
-	--muted: rgba(120, 120, 128, 0.18);
-	--muted-foreground: rgba(235, 235, 245, 0.6);
-	--accent: rgba(10, 132, 255, 0.18);
-	--accent-foreground: #0A84FF;
+	--secondary: rgba(118, 118, 128, 0.32);
+	--secondary-foreground: #F5F5F7;
+	--muted: rgba(118, 118, 128, 0.24);
+	--muted-foreground: rgba(235, 235, 245, 0.7);
+	--accent: rgba(10, 132, 255, 0.22);
+	--accent-foreground: #409CFF;
 	--destructive: #FF453A;
 	--destructive-foreground: #FFFFFF;
-	--border: rgba(255, 255, 255, 0.1);
-	--border-subtle: rgba(255, 255, 255, 0.05);
-	--input: rgba(120, 120, 128, 0.24);
+	--border: rgba(255, 255, 255, 0.14);
+	--border-subtle: rgba(255, 255, 255, 0.08);
+	--input: rgba(118, 118, 128, 0.28);
 	--ring: rgba(10, 132, 255, 0.6);
-	
-	/* Liquid Glass specific tokens - Dark — kept subtle so native glass shows through */
-	--glass-bg: rgba(44, 44, 46, 0.30);
-	--glass-bg-elevated: rgba(58, 58, 60, 0.45);
-	--glass-border: rgba(255, 255, 255, 0.12);
-	--glass-highlight: rgba(255, 255, 255, 0.15);
-	--glass-shadow: rgba(0, 0, 0, 0.25);
-	
-	/* Specular highlight for depth - Dark */
+
+	/* Liquid Glass specific tokens - Dark
+	   Apple Beta 3+: navigation bars and chrome are more opaque for legibility */
+	--glass-bg: rgba(28, 28, 30, 0.72);
+	--glass-bg-elevated: rgba(44, 44, 46, 0.82);
+	--glass-border: rgba(255, 255, 255, 0.16);
+	--glass-highlight: rgba(255, 255, 255, 0.12);
+	--glass-shadow: rgba(0, 0, 0, 0.4);
+
+	/* Specular highlight for depth - Dark (subtler to avoid washing out) */
 	--specular-gradient: linear-gradient(
 		135deg,
-		rgba(255, 255, 255, 0.2) 0%,
-		rgba(255, 255, 255, 0.07) 40%,
+		rgba(255, 255, 255, 0.1) 0%,
+		rgba(255, 255, 255, 0.04) 40%,
 		transparent 60%
 	);
-	
-	/* Dark mode system colors (slightly brighter for dark backgrounds) */
+
+	/* Dark mode system colors (brighter for dark backgrounds per Apple HIG) */
 	--system-blue: #0A84FF;
 	--system-green: #30D158;
 	--system-orange: #FF9F0A;
@@ -119,14 +121,14 @@
 	--system-pink: #FF375F;
 	--system-teal: #64D2FF;
 	--system-indigo: #5E5CE6;
-	
-	/* Character accent colors - Dark */
-	--peach: #FF9F7F;
-	--peach-light: #CC7F66;
-	--rose: #CC9292;
-	--lavender: rgba(120, 120, 128, 0.24);
-	--lavender-light: rgba(120, 120, 128, 0.18);
-	--cream: rgba(44, 44, 46, 0.72);
+
+	/* Character accent colors - Dark (brightened for contrast) */
+	--peach: #FFB399;
+	--peach-light: #E08870;
+	--rose: #FFADAD;
+	--lavender: rgba(118, 118, 128, 0.28);
+	--lavender-light: rgba(118, 118, 128, 0.20);
+	--cream: rgba(44, 44, 46, 0.78);
 	--iridescent-blue: #64D2FF;
 	--soft-gold: #FFD60A;
 	--mint: #30D158;
@@ -229,9 +231,15 @@
 	}
 
 	/* SF Pro inspired typography - Apple's system font characteristics */
+	/* Apple Liquid Glass HIG: typography made bolder to strengthen clarity */
 	h1, h2, h3, h4, h5, h6 {
 		@apply tracking-tight font-semibold;
 		letter-spacing: -0.022em;
+	}
+
+	.dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6 {
+		@apply font-bold;
+		-webkit-font-smoothing: antialiased;
 	}
 
 	h1 {
@@ -413,6 +421,10 @@
 	border-radius: inherit;
 }
 
+.dark .glass::before {
+	opacity: 0.4;
+}
+
 /* Elevated glass variant */
 .glass-elevated {
 	background: var(--glass-bg-elevated);
@@ -444,8 +456,8 @@
 }
 
 .dark .glass-subtle {
-	background: rgba(44, 44, 46, 0.25);
-	border: 1px solid rgba(255, 255, 255, 0.06);
+	background: rgba(28, 28, 30, 0.65);
+	border: 1px solid rgba(255, 255, 255, 0.10);
 }
 
 /* Interactive glass - for buttons and controls */
@@ -577,7 +589,11 @@
 	background: var(--specular-gradient);
 	pointer-events: none;
 	border-radius: inherit;
-	opacity: 0.8;
+	opacity: 0.6;
+}
+
+.dark .glass-card::before {
+	opacity: 0.3;
 }
 
 .glass-card:hover {
@@ -857,9 +873,9 @@
 
 .dark .liquid-glass-refraction {
 	box-shadow:
-		inset 0 1px 0 rgba(255, 255, 255, 0.15),
-		inset 0 -1px 0 rgba(255, 255, 255, 0.05),
-		inset 1px 0 0 rgba(255, 255, 255, 0.08),
-		inset -1px 0 0 rgba(255, 255, 255, 0.08),
+		inset 0 1px 0 rgba(255, 255, 255, 0.08),
+		inset 0 -1px 0 rgba(255, 255, 255, 0.03),
+		inset 1px 0 0 rgba(255, 255, 255, 0.05),
+		inset -1px 0 0 rgba(255, 255, 255, 0.05),
 		0 8px 32px var(--glass-shadow);
 }

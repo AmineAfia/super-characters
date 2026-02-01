@@ -37,3 +37,11 @@ next-env.d.ts
 # wails
 package.json.md5
 .pnpm-store/
+
+
+.pnpm-store/
+node_modules/
+.next/
+.next/**
+.next/trace
+.next/trace-build

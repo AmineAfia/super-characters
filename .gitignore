@@ -88,3 +88,12 @@ Desktop.ini
 .env.local
 .env.*.local
 *.pem
+
+
+.pnpm-store/
+node_modules/
+.next/
+.next/**
+.next/trace
+.next/trace-build
+

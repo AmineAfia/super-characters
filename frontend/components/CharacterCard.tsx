@@ -13,6 +13,7 @@ export interface Character {
   thumbnailUrl: string
   description: string
   color: string
+  systemPrompt: string
 }
 
 interface CharacterCardProps {
@@ -49,10 +50,11 @@ export default function CharacterCard({
           ? "shadow-glass-glow"
           : "shadow-glass hover:shadow-glass-lg",
 
-        // Specular highlight
+        // Specular highlight (subtle in dark mode for readability)
         "before:absolute before:inset-0 before:pointer-events-none before:z-10",
-        "before:bg-gradient-to-br before:from-white/25 before:via-white/5 before:to-transparent",
+        "before:bg-gradient-to-br before:from-white/15 before:via-white/3 before:to-transparent",
         "before:rounded-[inherit]",
+        "dark:before:from-white/8 dark:before:via-transparent",
 
         // Transitions
         "transition-all duration-300 ease-apple",
@@ -60,13 +62,10 @@ export default function CharacterCard({
         // Hover state
         "hover:scale-[1.03] hover:-translate-y-1",
 
-        // Selected state - animated gradient border + glow halo
+        // Selected state
         isSelected && [
-          "gradient-border-animated",
-          "glow-halo",
           "scale-[1.03] -translate-y-1",
           "z-10",
-          "border-transparent",
         ],
 
         // Focus
@@ -75,16 +74,17 @@ export default function CharacterCard({
         className
       )}
       style={{
-        // Set glow color for the halo
-        ...(isSelected ? { '--glow-color': character.color } as React.CSSProperties : {}),
+        ...(isSelected ? {
+          boxShadow: `0 0 20px ${character.color}40, 0 0 40px ${character.color}20, 0 8px 32px rgba(0,0,0,0.3)`,
+        } as React.CSSProperties : {}),
       }}
     >
       {/* Top gradient accent - using character color */}
       <div
         className="absolute inset-x-0 top-0 h-28 pointer-events-none"
         style={{
-          background: `linear-gradient(180deg, ${character.color}90 0%, transparent 100%)`,
-          opacity: isSelected ? 0.56 : 0.25,
+          background: `linear-gradient(180deg, ${character.color}60 0%, transparent 100%)`,
+          opacity: isSelected ? 0.45 : 0.18,
           transition: 'opacity 0.3s ease',
         }}
       />
@@ -136,13 +136,13 @@ export default function CharacterCard({
       <div className="p-4 pt-2 space-y-2.5 relative z-0">
         <div className="text-center">
           <h3 className={cn(
-            "font-semibold text-base tracking-tight",
+            "font-bold text-base tracking-tight",
             isSelected ? "text-primary" : "text-card-foreground"
           )}>
             {character.name}
           </h3>
-          <p 
-            className="text-[11px] font-medium uppercase tracking-wider"
+          <p
+            className="text-[11px] font-semibold uppercase tracking-wider"
             style={{ color: isSelected ? character.color : 'var(--muted-foreground)' }}
           >
             {character.subtitle}
@@ -152,26 +152,26 @@ export default function CharacterCard({
         {/* Stats with glass pills */}
         <div className="space-y-1.5 text-xs">
           <div className="flex items-center justify-between text-muted-foreground">
-            <span className="flex items-center gap-1.5 opacity-70">
+            <span className="flex items-center gap-1.5">
               <Mic className="w-3 h-3" />
               <span>Voice</span>
             </span>
             <span className={cn(
-              "px-2 py-0.5 rounded-full text-[11px] font-medium",
-              "bg-muted/60 backdrop-blur-sm",
+              "px-2 py-0.5 rounded-full text-[11px] font-semibold",
+              "bg-secondary backdrop-blur-sm",
               "text-card-foreground"
             )}>
               {character.voice}
             </span>
           </div>
           <div className="flex items-center justify-between text-muted-foreground">
-            <span className="flex items-center gap-1.5 opacity-70">
+            <span className="flex items-center gap-1.5">
               <Brain className="w-3 h-3" />
               <span>Model</span>
             </span>
             <span className={cn(
-              "px-2 py-0.5 rounded-full text-[11px] font-medium",
-              "bg-muted/60 backdrop-blur-sm",
+              "px-2 py-0.5 rounded-full text-[11px] font-semibold",
+              "bg-secondary backdrop-blur-sm",
               "text-card-foreground"
             )}>
               {character.model}

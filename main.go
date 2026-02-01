@@ -40,9 +40,9 @@ func main() {
 	mainWindow := app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Name:           "main",
 		Title:          "Super Characters",
-		Width:          900,
+		Width:          1170,
 		Height:         700,
-		MinWidth:       400,
+		MinWidth:       520,
 		MinHeight:      300,
 		Frameless:      true,
 		BackgroundType: application.BackgroundTypeTranslucent,

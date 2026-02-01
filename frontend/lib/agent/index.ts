@@ -33,7 +33,7 @@ export function createGoogleProvider() {
  * This is a factory function because we need to create a fresh provider
  * each time in case the API key has changed
  */
-export function createConversationAgent(additionalTools?: Record<string, unknown>) {
+export function createConversationAgent(additionalTools?: Record<string, unknown>, systemPrompt?: string) {
   const google = createGoogleProvider();
 
   // Merge base tools with any additional tools (like MCP tools)
@@ -44,7 +44,7 @@ export function createConversationAgent(additionalTools?: Record<string, unknown
 
   return new ToolLoopAgent({
     model: google(AGENT_CONFIG.model),
-    instructions: SYSTEM_INSTRUCTIONS,
+    instructions: systemPrompt || SYSTEM_INSTRUCTIONS,
     tools: allTools,
     stopWhen: stepCountIs(10), // Allow up to 10 steps for multi-tool workflows
     maxOutputTokens: AGENT_CONFIG.maxOutputTokens,
@@ -56,7 +56,7 @@ export function createConversationAgent(additionalTools?: Record<string, unknown
  * Create the conversation agent with MCP tools from connected apps
  * Async version that loads MCP tools before creating the agent
  */
-export async function createConversationAgentWithMCP() {
+export async function createConversationAgentWithMCP(systemPrompt?: string) {
   // Load MCP tools if not already loaded
   if (!mcpToolsLoaded) {
     try {
@@ -73,7 +73,7 @@ export async function createConversationAgentWithMCP() {
     }
   }
 
-  return createConversationAgent(cachedMCPTools);
+  return createConversationAgent(cachedMCPTools, systemPrompt);
 }
 
 /**
