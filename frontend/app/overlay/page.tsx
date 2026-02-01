@@ -17,12 +17,38 @@ export default function OverlayPage() {
   const [mounted, setMounted] = useState(false);
   const [isAvatarLoading, setIsAvatarLoading] = useState(true);
   const [isContinuousMode, setIsContinuousMode] = useState(false);
+  const [customAvatarUrl, setCustomAvatarUrl] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const avatarRef = useRef<AvatarCanvasHandle>(null);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Load custom avatar from settings
+  useEffect(() => {
+    if (!mounted) return;
+    const loadCustomAvatar = async () => {
+      try {
+        const { GetActiveAvatarPath, GetAvatarFileBase64 } = await import("@/bindings/super-characters/app");
+        const path = await GetActiveAvatarPath();
+        if (path) {
+          const base64Data = await GetAvatarFileBase64(path);
+          const binary = atob(base64Data);
+          const bytes = new Uint8Array(binary.length);
+          for (let i = 0; i < binary.length; i++) {
+            bytes[i] = binary.charCodeAt(i);
+          }
+          const blob = new Blob([bytes], { type: "model/gltf-binary" });
+          const url = URL.createObjectURL(blob);
+          setCustomAvatarUrl(url);
+        }
+      } catch (e) {
+        console.error("[OverlayPage] Failed to load custom avatar:", e);
+      }
+    };
+    loadCustomAvatar();
+  }, [mounted]);
 
   // ResizeObserver effect to resize the overlay window
   useEffect(() => {
@@ -206,6 +232,7 @@ export default function OverlayPage() {
           )}
           <AvatarCanvas
             ref={avatarRef}
+            avatarUrl={customAvatarUrl || undefined}
             onLoaded={() => setIsAvatarLoading(false)}
             onError={(err) => {
               setIsAvatarLoading(false);

@@ -33,7 +33,8 @@ export default function Home() {
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isConversationConfigured, setIsConversationConfigured] = useState<boolean | null>(null);
-  
+  const [customAvatarUrl, setCustomAvatarUrl] = useState<string | null>(null);
+
   // Character selection state
   const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null);
   const [showCharacterSelect, setShowCharacterSelect] = useState(true);
@@ -83,6 +84,45 @@ export default function Home() {
     };
     checkConversationConfig();
   }, [isSettingsOpen]); // Re-check when settings modal closes
+
+  // Load custom avatar from settings on mount and when settings close
+  useEffect(() => {
+    // Only load when settings closes (or on initial mount)
+    if (isSettingsOpen) return;
+
+    const loadCustomAvatar = async () => {
+      try {
+        const { GetActiveAvatarPath, GetAvatarFileBase64 } = await import("@/bindings/super-characters/app");
+        const path = await GetActiveAvatarPath();
+        console.log("[Page] Active avatar path:", path || "(none)");
+        if (path) {
+          const base64Data = await GetAvatarFileBase64(path);
+          console.log("[Page] Loaded avatar GLB, base64 length:", base64Data.length);
+          const binary = atob(base64Data);
+          const bytes = new Uint8Array(binary.length);
+          for (let i = 0; i < binary.length; i++) {
+            bytes[i] = binary.charCodeAt(i);
+          }
+          const blob = new Blob([bytes], { type: "model/gltf-binary" });
+          // Revoke previous blob URL to avoid memory leaks
+          if (customAvatarUrl) {
+            URL.revokeObjectURL(customAvatarUrl);
+          }
+          const url = URL.createObjectURL(blob);
+          console.log("[Page] Created custom avatar blob URL:", url);
+          setCustomAvatarUrl(url);
+        } else {
+          if (customAvatarUrl) {
+            URL.revokeObjectURL(customAvatarUrl);
+          }
+          setCustomAvatarUrl(null);
+        }
+      } catch (e) {
+        console.error("[Page] Failed to load custom avatar:", e);
+      }
+    };
+    loadCustomAvatar();
+  }, [isSettingsOpen]); // Reload when settings modal closes
 
   // Auto-activate conversation mode when hotkey is pressed
   useEffect(() => {
@@ -354,7 +394,7 @@ export default function Home() {
         )}
         <AvatarCanvas
           ref={avatarRef}
-          avatarUrl={selectedCharacter?.avatarUrl}
+          avatarUrl={customAvatarUrl || selectedCharacter?.avatarUrl}
           onLoaded={() => setIsAvatarLoading(false)}
           onError={(err) => { setIsAvatarLoading(false); setAvatarError(err); }}
         />

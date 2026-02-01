@@ -8,7 +8,11 @@ import (
 	"sync"
 	"time"
 
+	"os"
+	"path/filepath"
+
 	"super-characters/audio"
+	"super-characters/avatar"
 	"super-characters/elevenlabs"
 	"super-characters/gemini"
 	"super-characters/hotkey"
@@ -48,6 +52,7 @@ type App struct {
 	elevenlabsService *elevenlabs.ElevenLabsService
 	settingsService   *settings.SettingsService
 	pipedreamService  *pipedream.Service
+	avatarService     *avatar.AvatarService
 
 	// Recording state
 	isTranscribing bool
@@ -96,6 +101,7 @@ func NewApp() *App {
 		elevenlabsService:    elevenlabs.NewElevenLabsService(),
 		settingsService:      settingsSvc,
 		pipedreamService:     pipedream.NewService(),
+		avatarService:        avatar.NewAvatarService(),
 		vadService:           vad.NewVADService(vadCfg),
 		continuousState:      ConversationStateIdle,
 	}
@@ -303,6 +309,17 @@ func (a *App) ServiceStartup(ctx context.Context, options application.ServiceOpt
 				Environment:  a.settingsService.GetPipedreamEnvironment(),
 			})
 			slog.Info("Pipedream service configured from settings")
+		}
+	}
+
+	// Initialize avatar service
+	if a.avatarService != nil {
+		homeDir, err := os.UserHomeDir()
+		if err == nil {
+			appDir := filepath.Join(homeDir, ".super-characters")
+			if err := a.avatarService.Initialize(appDir); err != nil {
+				slog.Warn("avatar service initialization failed", "error", err)
+			}
 		}
 	}
 
@@ -1270,3 +1287,103 @@ func (a *App) openURLInBrowser(url string) error {
 }
 
 // #endregion Pipedream API
+
+// #region Avatar API
+
+// GenerateAvatarFromPhoto takes a base64-encoded photo and generates a custom avatar.
+func (a *App) GenerateAvatarFromPhoto(photoBase64 string) (*avatar.AvatarInfo, error) {
+	if a.avatarService == nil {
+		return nil, fmt.Errorf("avatar service not available")
+	}
+	return a.avatarService.GenerateFromPhoto(photoBase64)
+}
+
+// GetCustomAvatars returns all saved custom avatars.
+func (a *App) GetCustomAvatars() []avatar.AvatarInfo {
+	if a.avatarService == nil {
+		return nil
+	}
+	return a.avatarService.GetAvatars()
+}
+
+// SetActiveAvatar sets a custom avatar as the active one by ID.
+// Pass empty string to reset to default avatar.
+func (a *App) SetActiveAvatar(avatarID string) error {
+	if a.settingsService == nil {
+		return fmt.Errorf("settings service not available")
+	}
+
+	if avatarID == "" {
+		// Reset to default
+		return a.settingsService.SetActiveAvatarPath("")
+	}
+
+	if a.avatarService == nil {
+		return fmt.Errorf("avatar service not available")
+	}
+
+	path, err := a.avatarService.GetAvatarPath(avatarID)
+	if err != nil {
+		return err
+	}
+
+	return a.settingsService.SetActiveAvatarPath(path)
+}
+
+// DeleteCustomAvatar removes a custom avatar by ID.
+func (a *App) DeleteCustomAvatar(avatarID string) error {
+	if a.avatarService == nil {
+		return fmt.Errorf("avatar service not available")
+	}
+
+	// If this is the active avatar, reset to default
+	if a.settingsService != nil {
+		activePath := a.settingsService.GetActiveAvatarPath()
+		avatarPath, _ := a.avatarService.GetAvatarPath(avatarID)
+		if activePath == avatarPath {
+			a.settingsService.SetActiveAvatarPath("")
+		}
+	}
+
+	return a.avatarService.DeleteAvatar(avatarID)
+}
+
+// GetActiveAvatarPath returns the file path of the active custom avatar.
+// Returns empty string if using the default avatar.
+func (a *App) GetActiveAvatarPath() string {
+	if a.settingsService == nil {
+		return ""
+	}
+	return a.settingsService.GetActiveAvatarPath()
+}
+
+// GetAvatarFileBase64 reads a GLB file and returns its content as base64.
+// Used by the frontend to create blob URLs for custom avatars.
+func (a *App) GetAvatarFileBase64(avatarPath string) (string, error) {
+	if avatarPath == "" {
+		return "", fmt.Errorf("empty avatar path")
+	}
+
+	data, err := os.ReadFile(avatarPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read avatar file: %w", err)
+	}
+
+	return base64.StdEncoding.EncodeToString(data), nil
+}
+
+// CheckAvatarDependencies checks if Python and required packages are installed.
+// Returns empty string if all dependencies are met, or an error message.
+func (a *App) CheckAvatarDependencies() string {
+	if a.avatarService == nil {
+		return "Avatar service not available"
+	}
+
+	if err := a.avatarService.CheckPythonDependencies(); err != nil {
+		return err.Error()
+	}
+
+	return ""
+}
+
+// #endregion Avatar API

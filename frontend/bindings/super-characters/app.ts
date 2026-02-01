@@ -16,6 +16,9 @@ import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Cr
 import * as application$0 from "../github.com/wailsapp/wails/v3/pkg/application/models.ts";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as avatar$0 from "./avatar/models.ts";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as pipedream$0 from "./pipedream/models.ts";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
@@ -26,6 +29,14 @@ import * as settings$0 from "./settings/models.ts";
  */
 export function CheckAccessibility(): $CancellablePromise<boolean> {
     return $Call.ByID(1492572881);
+}
+
+/**
+ * CheckAvatarDependencies checks if Python and required packages are installed.
+ * Returns empty string if all dependencies are met, or an error message.
+ */
+export function CheckAvatarDependencies(): $CancellablePromise<string> {
+    return $Call.ByID(2604029811);
 }
 
 /**
@@ -46,6 +57,13 @@ export function CreatePipedreamConnectToken(externalUserID: string): $Cancellabl
 }
 
 /**
+ * DeleteCustomAvatar removes a custom avatar by ID.
+ */
+export function DeleteCustomAvatar(avatarID: string): $CancellablePromise<void> {
+    return $Call.ByID(713133752, avatarID);
+}
+
+/**
  * DeletePipedreamConnectedAccount removes a connected account.
  */
 export function DeletePipedreamConnectedAccount(accountID: string): $CancellablePromise<void> {
@@ -60,6 +78,31 @@ export function DownloadModel(modelName: string): $CancellablePromise<void> {
 }
 
 /**
+ * GenerateAvatarFromPhoto takes a base64-encoded photo and generates a custom avatar.
+ */
+export function GenerateAvatarFromPhoto(photoBase64: string): $CancellablePromise<avatar$0.AvatarInfo | null> {
+    return $Call.ByID(1675515905, photoBase64).then(($result: any) => {
+        return $$createType3($result);
+    });
+}
+
+/**
+ * GetActiveAvatarPath returns the file path of the active custom avatar.
+ * Returns empty string if using the default avatar.
+ */
+export function GetActiveAvatarPath(): $CancellablePromise<string> {
+    return $Call.ByID(2053120583);
+}
+
+/**
+ * GetAvatarFileBase64 reads a GLB file and returns its content as base64.
+ * Used by the frontend to create blob URLs for custom avatars.
+ */
+export function GetAvatarFileBase64(avatarPath: string): $CancellablePromise<string> {
+    return $Call.ByID(234130135, avatarPath);
+}
+
+/**
  * GetContinuousState returns the current continuous conversation state
  */
 export function GetContinuousState(): $CancellablePromise<string> {
@@ -67,11 +110,20 @@ export function GetContinuousState(): $CancellablePromise<string> {
 }
 
 /**
+ * GetCustomAvatars returns all saved custom avatars.
+ */
+export function GetCustomAvatars(): $CancellablePromise<avatar$0.AvatarInfo[]> {
+    return $Call.ByID(4131379202).then(($result: any) => {
+        return $$createType4($result);
+    });
+}
+
+/**
  * GetLanguages returns supported transcription languages
  */
 export function GetLanguages(): $CancellablePromise<string[]> {
     return $Call.ByID(3533302854).then(($result: any) => {
-        return $$createType2($result);
+        return $$createType5($result);
     });
 }
 
@@ -94,7 +146,7 @@ export function GetPipedreamMCPAccessToken(): $CancellablePromise<string> {
  */
 export function GetPipedreamMCPConfig(): $CancellablePromise<{ [_: string]: string }> {
     return $Call.ByID(907643680).then(($result: any) => {
-        return $$createType3($result);
+        return $$createType6($result);
     });
 }
 
@@ -103,7 +155,7 @@ export function GetPipedreamMCPConfig(): $CancellablePromise<{ [_: string]: stri
  */
 export function GetSettings(): $CancellablePromise<settings$0.Settings> {
     return $Call.ByID(2554697378).then(($result: any) => {
-        return $$createType4($result);
+        return $$createType7($result);
     });
 }
 
@@ -182,7 +234,7 @@ export function IsTranscribing(): $CancellablePromise<boolean> {
  */
 export function ListPipedreamApps(query: string, limit: number): $CancellablePromise<pipedream$0.App[]> {
     return $Call.ByID(1900254612, query, limit).then(($result: any) => {
-        return $$createType6($result);
+        return $$createType9($result);
     });
 }
 
@@ -191,7 +243,7 @@ export function ListPipedreamApps(query: string, limit: number): $CancellablePro
  */
 export function ListPipedreamConnectedAccounts(externalUserID: string): $CancellablePromise<pipedream$0.ConnectedAccount[]> {
     return $Call.ByID(514915583, externalUserID).then(($result: any) => {
-        return $$createType8($result);
+        return $$createType11($result);
     });
 }
 
@@ -259,6 +311,14 @@ export function ResizeOverlay(width: number, height: number): $CancellablePromis
  */
 export function ResumeListening(): $CancellablePromise<void> {
     return $Call.ByID(1650047363);
+}
+
+/**
+ * SetActiveAvatar sets a custom avatar as the active one by ID.
+ * Pass empty string to reset to default avatar.
+ */
+export function SetActiveAvatar(avatarID: string): $CancellablePromise<void> {
+    return $Call.ByID(1649169236, avatarID);
 }
 
 /**
@@ -366,10 +426,13 @@ export function SynthesizeSpeech(text: string): $CancellablePromise<string> {
 // Private type creation functions
 const $$createType0 = pipedream$0.TokenResponse.createFrom;
 const $$createType1 = $Create.Nullable($$createType0);
-const $$createType2 = $Create.Array($Create.Any);
-const $$createType3 = $Create.Map($Create.Any, $Create.Any);
-const $$createType4 = settings$0.Settings.createFrom;
-const $$createType5 = pipedream$0.App.createFrom;
-const $$createType6 = $Create.Array($$createType5);
-const $$createType7 = pipedream$0.ConnectedAccount.createFrom;
-const $$createType8 = $Create.Array($$createType7);
+const $$createType2 = avatar$0.AvatarInfo.createFrom;
+const $$createType3 = $Create.Nullable($$createType2);
+const $$createType4 = $Create.Array($$createType2);
+const $$createType5 = $Create.Array($Create.Any);
+const $$createType6 = $Create.Map($Create.Any, $Create.Any);
+const $$createType7 = settings$0.Settings.createFrom;
+const $$createType8 = pipedream$0.App.createFrom;
+const $$createType9 = $Create.Array($$createType8);
+const $$createType10 = pipedream$0.ConnectedAccount.createFrom;
+const $$createType11 = $Create.Array($$createType10);
