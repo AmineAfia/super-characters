@@ -36,7 +36,7 @@ func main() {
 	// 3. Inject App Dependencies
 	appService.SetApp(app)
 
-	// 4. Create the Main Window
+	// 4. Create the Main Window — native Liquid Glass on macOS 26+
 	mainWindow := app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Name:           "main",
 		Title:          "Super Characters",
@@ -45,12 +45,20 @@ func main() {
 		MinWidth:       400,
 		MinHeight:      300,
 		Frameless:      true,
-		BackgroundType: application.BackgroundTypeTransparent,
+		BackgroundType: application.BackgroundTypeTranslucent,
 		Mac: application.MacWindow{
 			InvisibleTitleBarHeight: 50,
-			Backdrop:                application.MacBackdropNormal,
+			Backdrop:                application.MacBackdropLiquidGlass,
 			TitleBar: application.MacTitleBar{
-				Hide: true,
+				AppearsTransparent: true,
+				Hide:               false,
+				HideTitle:          true,
+				FullSizeContent:    true,
+			},
+			LiquidGlass: application.MacLiquidGlass{
+				Style:        application.LiquidGlassStyleAutomatic,
+				Material:     application.NSVisualEffectMaterialAuto,
+				CornerRadius: 20.0,
 			},
 		},
 		DevToolsEnabled: true,

@@ -35,59 +35,75 @@ export default function CharacterCard({
         // Base layout
         "relative flex flex-col",
         "w-[180px] h-[260px] flex-shrink-0",
-        
+
         // Liquid Glass card styling
         "rounded-2xl overflow-hidden",
         "bg-card backdrop-blur-glass",
         "border border-glass-border",
-        
+
+        // Refraction effect
+        "liquid-glass-refraction",
+
         // Shadow and depth
-        isSelected 
-          ? "shadow-glass-glow" 
+        isSelected
+          ? "shadow-glass-glow"
           : "shadow-glass hover:shadow-glass-lg",
-        
+
         // Specular highlight
         "before:absolute before:inset-0 before:pointer-events-none before:z-10",
         "before:bg-gradient-to-br before:from-white/25 before:via-white/5 before:to-transparent",
         "before:rounded-[inherit]",
-        
+
         // Transitions
         "transition-all duration-300 ease-apple",
-        
+
         // Hover state
         "hover:scale-[1.03] hover:-translate-y-1",
-        
-        // Selected state
+
+        // Selected state - animated gradient border + glow halo
         isSelected && [
-          "border-primary",
+          "gradient-border-animated",
+          "glow-halo",
           "scale-[1.03] -translate-y-1",
           "z-10",
+          "border-transparent",
         ],
-        
+
         // Focus
         "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
-        
+
         className
       )}
+      style={{
+        // Set glow color for the halo
+        ...(isSelected ? { '--glow-color': character.color } as React.CSSProperties : {}),
+      }}
     >
       {/* Top gradient accent - using character color */}
-      <div 
-        className="absolute inset-x-0 top-0 h-28 opacity-20 pointer-events-none"
-        style={{ 
-          background: `linear-gradient(180deg, ${character.color}60 0%, transparent 100%)` 
+      <div
+        className="absolute inset-x-0 top-0 h-28 pointer-events-none"
+        style={{
+          background: `linear-gradient(180deg, ${character.color}90 0%, transparent 100%)`,
+          opacity: isSelected ? 0.56 : 0.25,
+          transition: 'opacity 0.3s ease',
         }}
       />
       
       {/* Character Avatar */}
       <div className="relative flex-1 flex items-center justify-center pt-5 px-4 z-0">
-        <div className={cn(
-          "relative w-24 h-24 rounded-full overflow-hidden",
-          "border-2 transition-all duration-300",
-          "shadow-glass-sm",
-          isSelected 
-            ? "border-primary shadow-glass-glow" 
-            : "border-glass-border"
-        )}>
+        <div
+          className={cn(
+            "relative w-24 h-24 rounded-full overflow-hidden",
+            "border-2 transition-all duration-300",
+            "shadow-glass-sm",
+            isSelected
+              ? "border-primary"
+              : "border-glass-border"
+          )}
+          style={isSelected ? {
+            boxShadow: `0 0 20px ${character.color}50, 0 0 40px ${character.color}25`,
+          } : undefined}
+        >
           <img
             src={character.thumbnailUrl}
             alt={character.name}
@@ -96,7 +112,7 @@ export default function CharacterCard({
           />
           {/* Overlay glow on selected */}
           {isSelected && (
-            <div 
+            <div
               className="absolute inset-0 animate-pulse-soft"
               style={{ backgroundColor: `${character.color}20` }}
             />
@@ -164,14 +180,16 @@ export default function CharacterCard({
         </div>
       </div>
       
-      {/* Bottom accent bar */}
-      <div 
+      {/* Bottom accent glow */}
+      <div
         className={cn(
-          "absolute bottom-0 inset-x-0 h-1",
+          "absolute bottom-0 inset-x-0 h-4",
           "transition-all duration-300",
           isSelected ? "opacity-100" : "opacity-0"
         )}
-        style={{ backgroundColor: character.color }}
+        style={{
+          background: `linear-gradient(to top, ${character.color}40, transparent)`,
+        }}
       />
     </button>
   )

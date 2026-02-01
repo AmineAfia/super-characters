@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
+import LiquidGlassFilters from "@/components/LiquidGlassFilters";
 
 import { GeistMono } from "geist/font/mono";
 import { GeistSans } from "geist/font/sans";
@@ -46,6 +47,7 @@ export default function RootLayout({
           enableSystem={false}
           disableTransitionOnChange
         >
+          <LiquidGlassFilters />
           <div className="main-layout flex flex-col h-screen overflow-hidden bg-transparent border-0 outline-none ring-0">
             <main className="flex-1 relative overflow-hidden">
               {children}

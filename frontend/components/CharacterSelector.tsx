@@ -148,19 +148,17 @@ export default function CharacterSelector({
   }
 
   return (
-    <div className="flex flex-col h-full bg-background relative overflow-hidden">
-      {/* Ambient liquid glass orbs */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="bubble bubble-lg top-16 left-8" style={{ animationDelay: '0s' }} />
-        <div className="bubble bubble-md top-32 right-12" style={{ animationDelay: '2s' }} />
-        <div className="bubble bubble-sm bottom-40 left-20" style={{ animationDelay: '4s' }} />
-        <div className="bubble bubble-md bottom-24 right-24" style={{ animationDelay: '1s' }} />
-        <div className="bubble bubble-sm top-48 left-1/3" style={{ animationDelay: '3s' }} />
-      </div>
-
-      {/* Soft ambient gradient backgrounds */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_80%_-20%,rgba(0,122,255,0.08),transparent_60%)]" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_20%_100%,rgba(90,200,250,0.06),transparent_50%)]" />
+    <div
+      className="flex flex-col h-full bg-background relative overflow-hidden"
+      style={{ '--character-color': selectedCharacter.color } as React.CSSProperties}
+    >
+      {/* Character-reactive ambient glow */}
+      <div
+        className="absolute inset-0 pointer-events-none transition-all duration-700 ease-out"
+        style={{
+          background: `radial-gradient(ellipse 80% 60% at 50% 40%, ${selectedCharacter.color}18, transparent 70%)`,
+        }}
+      />
 
       {/* Header - Liquid Glass style */}
       <div className="flex-shrink-0 relative z-10">
@@ -258,10 +256,13 @@ export default function CharacterSelector({
         <div className="lg:w-1/2 flex flex-col border-t lg:border-t-0 lg:border-l border-border/30 relative">
           {/* 3D Avatar Preview */}
           <div className="flex-1 relative min-h-[300px]">
-            {/* Spotlight glow effect */}
-            <div 
-              className="absolute bottom-0 left-1/2 -translate-x-1/2 w-72 h-36 rounded-full blur-3xl opacity-25 pointer-events-none transition-colors duration-500"
-              style={{ backgroundColor: selectedCharacter.color }}
+            {/* Spotlight glow effect - enhanced */}
+            <div
+              className="absolute bottom-0 left-1/2 -translate-x-1/2 w-96 h-48 rounded-full pointer-events-none transition-all duration-500"
+              style={{
+                background: `radial-gradient(ellipse, ${selectedCharacter.color}50 0%, ${selectedCharacter.color}15 50%, transparent 70%)`,
+                filter: 'blur(40px)',
+              }}
             />
             
             {/* 3D Avatar Canvas */}
@@ -291,18 +292,20 @@ export default function CharacterSelector({
 
             {/* Select button - Liquid Glass with character color */}
             <div className="flex justify-center mt-5">
-              <Button 
+              <Button
                 size="lg"
                 className={cn(
                   "px-8 rounded-2xl",
+                  "glow-halo",
                   "shadow-glass hover:shadow-glass-lg",
                   "transition-all duration-300 ease-apple",
                   "hover:-translate-y-0.5"
                 )}
-                style={{ 
+                style={{
                   backgroundColor: selectedCharacter.color,
-                  color: '#FFFFFF'
-                }}
+                  color: '#FFFFFF',
+                  '--glow-color': selectedCharacter.color,
+                } as React.CSSProperties}
                 onClick={() => onSelect(selectedCharacter)}
               >
                 <Sparkles className="w-4 h-4 mr-2" />

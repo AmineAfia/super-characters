@@ -9,9 +9,9 @@
 	--background: transparent;
 	--background-solid: #F2F2F7;
 	--foreground: #1C1C1E;
-	--card: rgba(255, 255, 255, 0.72);
+	--card: rgba(255, 255, 255, 0.40);
 	--card-foreground: #1C1C1E;
-	--popover: rgba(255, 255, 255, 0.85);
+	--popover: rgba(255, 255, 255, 0.55);
 	--popover-foreground: #1C1C1E;
 	--primary: #007AFF;
 	--primary-foreground: #FFFFFF;
@@ -29,21 +29,21 @@
 	--ring: rgba(0, 122, 255, 0.5);
 	--radius: 1.25rem;
 	
-	/* Liquid Glass specific tokens */
-	--glass-bg: rgba(255, 255, 255, 0.72);
-	--glass-bg-elevated: rgba(255, 255, 255, 0.85);
-	--glass-border: rgba(255, 255, 255, 0.5);
-	--glass-highlight: rgba(255, 255, 255, 0.9);
+	/* Liquid Glass specific tokens — kept subtle so native glass shows through */
+	--glass-bg: rgba(255, 255, 255, 0.35);
+	--glass-bg-elevated: rgba(255, 255, 255, 0.50);
+	--glass-border: rgba(255, 255, 255, 0.4);
+	--glass-highlight: rgba(255, 255, 255, 0.7);
 	--glass-shadow: rgba(0, 0, 0, 0.08);
 	--glass-blur: 40px;
 	--glass-blur-light: 20px;
-	--glass-saturation: 180%;
+	--glass-saturation: 200%;
 	
 	/* Specular highlight for depth */
 	--specular-gradient: linear-gradient(
 		135deg,
-		rgba(255, 255, 255, 0.4) 0%,
-		rgba(255, 255, 255, 0.1) 40%,
+		rgba(255, 255, 255, 0.5) 0%,
+		rgba(255, 255, 255, 0.15) 40%,
 		transparent 60%
 	);
 	
@@ -75,9 +75,9 @@
 	--background: transparent;
 	--background-solid: #000000;
 	--foreground: #FFFFFF;
-	--card: rgba(44, 44, 46, 0.72);
+	--card: rgba(44, 44, 46, 0.40);
 	--card-foreground: #FFFFFF;
-	--popover: rgba(44, 44, 46, 0.85);
+	--popover: rgba(44, 44, 46, 0.55);
 	--popover-foreground: #FFFFFF;
 	--primary: #0A84FF;
 	--primary-foreground: #FFFFFF;
@@ -94,18 +94,18 @@
 	--input: rgba(120, 120, 128, 0.24);
 	--ring: rgba(10, 132, 255, 0.6);
 	
-	/* Liquid Glass specific tokens - Dark */
-	--glass-bg: rgba(44, 44, 46, 0.72);
-	--glass-bg-elevated: rgba(58, 58, 60, 0.85);
+	/* Liquid Glass specific tokens - Dark — kept subtle so native glass shows through */
+	--glass-bg: rgba(44, 44, 46, 0.30);
+	--glass-bg-elevated: rgba(58, 58, 60, 0.45);
 	--glass-border: rgba(255, 255, 255, 0.12);
 	--glass-highlight: rgba(255, 255, 255, 0.15);
-	--glass-shadow: rgba(0, 0, 0, 0.3);
+	--glass-shadow: rgba(0, 0, 0, 0.25);
 	
 	/* Specular highlight for depth - Dark */
 	--specular-gradient: linear-gradient(
 		135deg,
-		rgba(255, 255, 255, 0.15) 0%,
-		rgba(255, 255, 255, 0.05) 40%,
+		rgba(255, 255, 255, 0.2) 0%,
+		rgba(255, 255, 255, 0.07) 40%,
 		transparent 60%
 	);
 	
@@ -276,43 +276,44 @@
    Animations, Effects, and Component Styles
    ============================================ */
 
-/* Decorative ambient orbs - subtle and ethereal */
+/* Decorative ambient orbs - vibrant dopamine style */
 .bubble {
 	position: absolute;
 	border-radius: 50%;
-	background: radial-gradient(
-		circle at 30% 30%,
-		rgba(0, 122, 255, 0.15),
-		rgba(90, 200, 250, 0.08) 50%,
-		transparent 70%
+	background: linear-gradient(
+		135deg,
+		rgba(175, 82, 222, 0.35),
+		rgba(0, 122, 255, 0.25) 50%,
+		rgba(90, 200, 250, 0.15) 100%
 	);
-	backdrop-filter: blur(1px);
+	mix-blend-mode: screen;
 	animation: liquid-float 8s ease-in-out infinite;
 	pointer-events: none;
+	filter: blur(1px);
 }
 
 .dark .bubble {
-	background: radial-gradient(
-		circle at 30% 30%,
-		rgba(10, 132, 255, 0.12),
-		rgba(100, 210, 255, 0.06) 50%,
-		transparent 70%
+	background: linear-gradient(
+		135deg,
+		rgba(191, 90, 242, 0.3),
+		rgba(10, 132, 255, 0.2) 50%,
+		rgba(100, 210, 255, 0.12) 100%
 	);
 }
 
 .bubble-sm {
-	width: 16px;
-	height: 16px;
+	width: 24px;
+	height: 24px;
 }
 
 .bubble-md {
-	width: 32px;
-	height: 32px;
+	width: 48px;
+	height: 48px;
 }
 
 .bubble-lg {
-	width: 56px;
-	height: 56px;
+	width: 80px;
+	height: 80px;
 }
 
 /* Liquid Glass keyframe animations */
@@ -436,15 +437,15 @@
 
 /* Subtle glass for inline elements */
 .glass-subtle {
-	background: rgba(255, 255, 255, 0.5);
+	background: rgba(255, 255, 255, 0.25);
 	backdrop-filter: blur(var(--glass-blur-light)) saturate(150%);
 	-webkit-backdrop-filter: blur(var(--glass-blur-light)) saturate(150%);
-	border: 1px solid rgba(255, 255, 255, 0.3);
+	border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .dark .glass-subtle {
-	background: rgba(44, 44, 46, 0.5);
-	border: 1px solid rgba(255, 255, 255, 0.08);
+	background: rgba(44, 44, 46, 0.25);
+	border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 /* Interactive glass - for buttons and controls */
@@ -694,4 +695,171 @@
 
 .status-dot-pulse {
 	animation: pulse-soft 2s ease-in-out infinite;
+}
+
+/* ============================================
+   DOPAMINE DECOR - Gradient Mesh & Accents
+   ============================================ */
+
+/* Blob drift keyframes for gradient mesh background */
+@keyframes blob-drift-1 {
+	0%, 100% { transform: translate(0, 0) scale(1); }
+	25% { transform: translate(30px, -50px) scale(1.05); }
+	50% { transform: translate(-20px, 20px) scale(0.95); }
+	75% { transform: translate(40px, 30px) scale(1.02); }
+}
+
+@keyframes blob-drift-2 {
+	0%, 100% { transform: translate(0, 0) scale(1); }
+	25% { transform: translate(-40px, 30px) scale(0.97); }
+	50% { transform: translate(30px, -40px) scale(1.04); }
+	75% { transform: translate(-20px, -20px) scale(1.01); }
+}
+
+@keyframes blob-drift-3 {
+	0%, 100% { transform: translate(0, 0) scale(1.02); }
+	33% { transform: translate(50px, 20px) scale(0.96); }
+	66% { transform: translate(-30px, -40px) scale(1.05); }
+}
+
+@keyframes blob-drift-4 {
+	0%, 100% { transform: translate(0, 0) scale(0.98); }
+	20% { transform: translate(-50px, -30px) scale(1.03); }
+	40% { transform: translate(20px, 50px) scale(0.95); }
+	60% { transform: translate(40px, -20px) scale(1.06); }
+	80% { transform: translate(-30px, 30px) scale(1); }
+}
+
+@keyframes blob-drift-5 {
+	0%, 100% { transform: translate(0, 0) scale(1); }
+	30% { transform: translate(35px, 45px) scale(1.04); }
+	60% { transform: translate(-45px, -15px) scale(0.97); }
+}
+
+@keyframes rotate-gradient {
+	0% { --gradient-angle: 0deg; }
+	100% { --gradient-angle: 360deg; }
+}
+
+/* @property for gradient angle animation (Safari 15.4+) */
+@property --gradient-angle {
+	syntax: "<angle>";
+	initial-value: 0deg;
+	inherits: false;
+}
+
+/* Animated rotating rainbow gradient border - uses box-shadow overlay */
+.gradient-border-animated {
+	position: relative;
+	animation: rotate-gradient 4s linear infinite;
+	border-image: conic-gradient(
+		from var(--gradient-angle, 0deg),
+		var(--system-blue),
+		var(--system-purple),
+		var(--system-pink),
+		var(--system-orange),
+		var(--system-teal),
+		var(--system-blue)
+	) 1;
+}
+
+/* For rounded corners, use an outline approach with inner glow */
+.gradient-border-animated.rounded-2xl {
+	border-image: none;
+	box-shadow:
+		0 0 0 2px var(--system-blue),
+		0 0 12px rgba(0, 122, 255, 0.3),
+		0 0 24px rgba(175, 82, 222, 0.15);
+	animation: rainbow-glow 4s linear infinite;
+}
+
+@keyframes rainbow-glow {
+	0% {
+		box-shadow:
+			0 0 0 2px var(--system-blue),
+			0 0 12px rgba(0, 122, 255, 0.3),
+			0 0 24px rgba(175, 82, 222, 0.15);
+	}
+	20% {
+		box-shadow:
+			0 0 0 2px var(--system-purple),
+			0 0 12px rgba(175, 82, 222, 0.3),
+			0 0 24px rgba(255, 45, 85, 0.15);
+	}
+	40% {
+		box-shadow:
+			0 0 0 2px var(--system-pink),
+			0 0 12px rgba(255, 45, 85, 0.3),
+			0 0 24px rgba(255, 149, 0, 0.15);
+	}
+	60% {
+		box-shadow:
+			0 0 0 2px var(--system-orange),
+			0 0 12px rgba(255, 149, 0, 0.3),
+			0 0 24px rgba(90, 200, 250, 0.15);
+	}
+	80% {
+		box-shadow:
+			0 0 0 2px var(--system-teal),
+			0 0 12px rgba(90, 200, 250, 0.3),
+			0 0 24px rgba(0, 122, 255, 0.15);
+	}
+	100% {
+		box-shadow:
+			0 0 0 2px var(--system-blue),
+			0 0 12px rgba(0, 122, 255, 0.3),
+			0 0 24px rgba(175, 82, 222, 0.15);
+	}
+}
+
+/* Colored glow halo behind elements */
+.glow-halo {
+	position: relative;
+}
+
+.glow-halo::after {
+	content: '';
+	position: absolute;
+	inset: -8px;
+	border-radius: inherit;
+	background: var(--glow-color, var(--system-blue));
+	opacity: 0.15;
+	filter: blur(20px);
+	z-index: -1;
+	transition: opacity 0.3s ease, filter 0.3s ease;
+	pointer-events: none;
+}
+
+.glow-halo:hover::after {
+	opacity: 0.22;
+	filter: blur(24px);
+}
+
+/* Iridescent shimmer - slow hue-rotate */
+.iridescent {
+	animation: iridescent-shift 6s ease-in-out infinite;
+}
+
+@keyframes iridescent-shift {
+	0%, 100% { filter: hue-rotate(0deg) brightness(1); }
+	50% { filter: hue-rotate(30deg) brightness(1.05); }
+}
+
+/* Multi-layer inset box-shadows simulating edge refraction */
+.liquid-glass-refraction {
+	box-shadow:
+		inset 0 1px 0 rgba(255, 255, 255, 0.4),
+		inset 0 -1px 0 rgba(255, 255, 255, 0.1),
+		inset 1px 0 0 rgba(255, 255, 255, 0.15),
+		inset -1px 0 0 rgba(255, 255, 255, 0.15),
+		0 8px 32px var(--glass-shadow);
+}
+
+.dark .liquid-glass-refraction {
+	box-shadow:
+		inset 0 1px 0 rgba(255, 255, 255, 0.15),
+		inset 0 -1px 0 rgba(255, 255, 255, 0.05),
+		inset 1px 0 0 rgba(255, 255, 255, 0.08),
+		inset -1px 0 0 rgba(255, 255, 255, 0.08),
+		0 8px 32px var(--glass-shadow);
 }

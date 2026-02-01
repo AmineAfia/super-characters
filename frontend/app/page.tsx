@@ -184,18 +184,21 @@ export default function Home() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-background relative overflow-hidden">
-      {/* Ambient Liquid Glass orbs */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="bubble bubble-lg top-16 left-8" style={{ animationDelay: '0s' }} />
-        <div className="bubble bubble-md top-36 right-12" style={{ animationDelay: '2s' }} />
-        <div className="bubble bubble-sm bottom-36 left-20" style={{ animationDelay: '4s' }} />
-        <div className="bubble bubble-md bottom-24 right-28" style={{ animationDelay: '1s' }} />
-      </div>
-
-      {/* Subtle ambient gradients */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_50%_at_75%_-10%,rgba(0,122,255,0.06),transparent_50%)] pointer-events-none" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_50%_40%_at_25%_100%,rgba(90,200,250,0.04),transparent_40%)] pointer-events-none" />
+    <div
+      className="flex flex-col h-full bg-background relative overflow-hidden"
+      style={{
+        '--character-color': selectedCharacter?.color || '#007AFF',
+      } as React.CSSProperties}
+    >
+      {/* Character-reactive ambient glow (gradient mesh is in layout) */}
+      <div
+        className="absolute inset-0 pointer-events-none transition-all duration-700 ease-out"
+        style={{
+          background: selectedCharacter
+            ? `radial-gradient(ellipse 70% 50% at 50% 30%, ${selectedCharacter.color}15, transparent 70%)`
+            : undefined,
+        }}
+      />
 
       {/* Permission Warnings - Liquid Glass style alerts */}
       <div className="flex flex-col relative z-10">
@@ -267,9 +270,12 @@ export default function Home() {
               
               <div className="relative">
                 {selectedCharacter ? (
-                  <div 
+                  <div
                     className="h-11 w-11 rounded-2xl shadow-glass overflow-hidden border-2"
-                    style={{ borderColor: selectedCharacter.color }}
+                    style={{
+                      borderColor: selectedCharacter.color,
+                      boxShadow: `0 0 12px ${selectedCharacter.color}40, 0 0 24px ${selectedCharacter.color}20`,
+                    }}
                   >
                     <img 
                       src={selectedCharacter.thumbnailUrl}
@@ -344,14 +350,14 @@ export default function Home() {
 
       {/* 3D Avatar - with subtle depth effect */}
       <div className="relative h-[300px] flex-shrink-0">
-        {/* Subtle ambient gradient */}
-        <div className="absolute inset-0 bg-gradient-to-b from-muted/20 to-transparent" />
-        <div 
-          className="absolute inset-0 opacity-10 transition-colors duration-500"
-          style={{ 
-            background: selectedCharacter 
-              ? `radial-gradient(ellipse 60% 50% at 50% 100%, ${selectedCharacter.color}40, transparent 70%)`
-              : 'radial-gradient(ellipse 60% 50% at 50% 100%, rgba(0,122,255,0.2), transparent 70%)'
+        {/* Enhanced ambient gradient with character color */}
+        <div className="absolute inset-0 bg-gradient-to-b from-muted/10 to-transparent" />
+        <div
+          className="absolute inset-0 transition-all duration-500"
+          style={{
+            background: selectedCharacter
+              ? `radial-gradient(ellipse 70% 60% at 50% 100%, ${selectedCharacter.color}30, transparent 70%)`
+              : 'radial-gradient(ellipse 70% 60% at 50% 100%, rgba(0,122,255,0.15), transparent 70%)',
           }}
         />
         
