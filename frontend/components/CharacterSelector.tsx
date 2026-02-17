@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useCallback } from "react"
 import dynamic from "next/dynamic"
-import { ChevronLeft, ChevronRight, Sparkles, Plus } from "lucide-react"
+import { ChevronLeft, ChevronRight, Sparkles, Plus, UserPlus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import CharacterCard, { type Character } from "@/components/CharacterCard"
 import { cn } from "@/lib/utils"
@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import ComponentBrowser from "@/components/ComponentBrowser"
+import CreateCharacterModal from "@/components/CreateCharacterModal"
 import { isPipedreamConfigured, listConnectedAccounts } from "@/lib/pipedream/client"
 import type { ConnectedAccount } from "@/lib/pipedream/client"
 
@@ -194,8 +195,103 @@ export default function CharacterSelector({
   const [connectedAccounts, setConnectedAccounts] = useState<ConnectedAccount[]>([])
   const [pipedreamReady, setPipedreamReady] = useState(false)
   const [appsModalOpen, setAppsModalOpen] = useState(false)
+  const [createModalOpen, setCreateModalOpen] = useState(false)
 
   const selectedCharacter = characters.find(c => c.id === selectedId) || characters[0]
+
+  // Load custom characters from backend on mount
+  const loadCustomCharacters = useCallback(async () => {
+    try {
+      const { ListCustomCharacters } = await import("@/bindings/super-characters/app")
+      const customChars = await ListCustomCharacters()
+      if (customChars && customChars.length > 0) {
+        setCharacters(prev => {
+          // Remove existing custom characters and re-add from backend
+          const builtIn = prev.filter(c => !c.isCustom)
+          const custom: Character[] = customChars.map((c: any) => ({
+            id: c.id,
+            name: c.name,
+            subtitle: c.subtitle,
+            voice: c.voice,
+            model: c.model,
+            avatarUrl: c.avatarUrl || getGlbUrl(AVATAR_IDS.luna), // Fallback to default
+            thumbnailUrl: c.thumbnailUrl || "",
+            description: c.description,
+            color: c.color,
+            systemPrompt: c.systemPrompt,
+            isCustom: true,
+            status: c.status,
+          }))
+          return [...builtIn, ...custom]
+        })
+      }
+    } catch (err) {
+      console.warn("[CharacterSelector] Failed to load custom characters:", err)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadCustomCharacters()
+  }, [loadCustomCharacters])
+
+  // Listen for character pipeline progress events
+  useEffect(() => {
+    let unsubCreated: (() => void) | undefined
+    let unsubDeleted: (() => void) | undefined
+    let unsubProgress: (() => void) | undefined
+
+    const setup = async () => {
+      try {
+        const { Events } = await import("@wailsio/runtime")
+
+        unsubCreated = Events.On("character:created", () => {
+          loadCustomCharacters()
+        })
+
+        unsubDeleted = Events.On("character:deleted", () => {
+          loadCustomCharacters()
+        })
+
+        unsubProgress = Events.On("character:pipeline-progress", (event: any) => {
+          const { id, step } = event.data || {}
+          if (id && step === "ready") {
+            // Reload to get the updated avatar URL
+            loadCustomCharacters()
+          }
+        })
+      } catch {
+        // Events not available (SSR)
+      }
+    }
+
+    setup()
+    return () => {
+      unsubCreated?.()
+      unsubDeleted?.()
+      unsubProgress?.()
+    }
+  }, [loadCustomCharacters])
+
+  // Handle new custom character creation
+  const handleCharacterCreated = useCallback((character: Character) => {
+    setCharacters(prev => [...prev, character])
+    setSelectedId(character.id)
+  }, [])
+
+  // Handle deleting a custom character
+  const handleDeleteCustomCharacter = useCallback(async (id: string) => {
+    try {
+      const { DeleteCustomCharacter } = await import("@/bindings/super-characters/app")
+      await DeleteCustomCharacter(id)
+      setCharacters(prev => prev.filter(c => c.id !== id))
+      // If the deleted character was selected, switch to first character
+      if (selectedId === id) {
+        setSelectedId(characters[0]?.id)
+      }
+    } catch (err) {
+      console.error("[CharacterSelector] Failed to delete character:", err)
+    }
+  }, [selectedId, characters])
 
   useEffect(() => {
     const checkScroll = () => {
@@ -287,6 +383,19 @@ export default function CharacterSelector({
                 </div>
               </div>
 
+              {/* Create Character + Connected app logos */}
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="glass"
+                  size="sm"
+                  onClick={() => setCreateModalOpen(true)}
+                  className="rounded-xl gap-1.5"
+                >
+                  <UserPlus className="w-3.5 h-3.5" />
+                  <span className="text-xs">Create</span>
+                </Button>
+              </div>
+
               {/* Connected app logos */}
               {pipedreamReady && (
                 <div className="flex items-center gap-1.5">
@@ -370,6 +479,33 @@ export default function CharacterSelector({
                   onClick={() => handleSelect(character)}
                 />
               ))}
+
+              {/* Create Character card */}
+              <button
+                onClick={() => setCreateModalOpen(true)}
+                className={cn(
+                  "relative flex flex-col items-center justify-center",
+                  "w-[180px] h-[260px] flex-shrink-0",
+                  "rounded-2xl overflow-hidden",
+                  "bg-card/40 backdrop-blur-glass",
+                  "border-2 border-dashed border-border/50",
+                  "shadow-glass hover:shadow-glass-lg",
+                  "transition-all duration-300 ease-apple",
+                  "hover:scale-[1.03] hover:-translate-y-1",
+                  "hover:border-primary/30",
+                  "group"
+                )}
+              >
+                <div className="p-4 rounded-full bg-muted/30 group-hover:bg-primary/10 transition-colors duration-300">
+                  <Plus className="w-8 h-8 text-muted-foreground group-hover:text-primary transition-colors duration-300" />
+                </div>
+                <p className="text-sm font-medium text-muted-foreground mt-3 group-hover:text-foreground transition-colors">
+                  Create Character
+                </p>
+                <p className="text-[11px] text-muted-foreground/60 mt-1">
+                  From your photo
+                </p>
+              </button>
             </div>
           </div>
 
@@ -402,12 +538,28 @@ export default function CharacterSelector({
                   const newPrompt = e.target.value
                   setCharacters(prev => prev.map(c => c.id === selectedId ? { ...c, systemPrompt: newPrompt } : c))
                 }}
-                onBlur={() => {
+                onBlur={async () => {
                   try {
+                    // Save to localStorage for built-in characters
                     const saved = localStorage.getItem("character-system-prompts")
                     const prompts: Record<string, string> = saved ? JSON.parse(saved) : {}
                     prompts[selectedId] = selectedCharacter.systemPrompt
                     localStorage.setItem("character-system-prompts", JSON.stringify(prompts))
+
+                    // Also persist to backend for custom characters
+                    if (selectedCharacter.isCustom) {
+                      const { UpdateCustomCharacter } = await import("@/bindings/super-characters/app")
+                      await UpdateCustomCharacter(
+                        selectedCharacter.id,
+                        selectedCharacter.name,
+                        selectedCharacter.subtitle,
+                        selectedCharacter.voice,
+                        selectedCharacter.model,
+                        selectedCharacter.description,
+                        selectedCharacter.color,
+                        selectedCharacter.systemPrompt,
+                      )
+                    }
                   } catch {}
                 }}
                 rows={3}
@@ -429,14 +581,34 @@ export default function CharacterSelector({
               }}
             />
 
-            {/* 3D Avatar Canvas */}
+            {/* 3D Avatar Canvas or Custom Character Preview */}
             <div className="absolute inset-0">
-              <AvatarPreview3D
-                key={selectedCharacter.id}
-                avatarUrl={selectedCharacter.avatarUrl}
-                onLoaded={() => console.log(`[CharacterSelector] ${selectedCharacter.name} avatar loaded`)}
-                onError={(err) => console.error(`[CharacterSelector] Failed to load ${selectedCharacter.name}:`, err)}
-              />
+              {selectedCharacter.isCustom && (!selectedCharacter.avatarUrl || selectedCharacter.avatarUrl === "") ? (
+                <div className="w-full h-full flex items-center justify-center">
+                  {selectedCharacter.thumbnailUrl ? (
+                    <img
+                      src={selectedCharacter.thumbnailUrl}
+                      alt={selectedCharacter.name}
+                      className="w-48 h-48 rounded-3xl object-cover shadow-glass-lg border-2"
+                      style={{ borderColor: selectedCharacter.color }}
+                    />
+                  ) : (
+                    <div
+                      className="w-32 h-32 rounded-3xl flex items-center justify-center text-white font-bold text-5xl shadow-glass-lg"
+                      style={{ backgroundColor: selectedCharacter.color }}
+                    >
+                      {selectedCharacter.name.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <AvatarPreview3D
+                  key={selectedCharacter.id}
+                  avatarUrl={selectedCharacter.avatarUrl}
+                  onLoaded={() => console.log(`[CharacterSelector] ${selectedCharacter.name} avatar loaded`)}
+                  onError={(err) => console.error(`[CharacterSelector] Failed to load ${selectedCharacter.name}:`, err)}
+                />
+              )}
             </div>
           </div>
 
@@ -455,7 +627,18 @@ export default function CharacterSelector({
             </div>
 
             {/* Select button - Liquid Glass with character color */}
-            <div className="flex justify-center mt-5">
+            <div className="flex justify-center items-center gap-3 mt-5">
+              {selectedCharacter.isCustom && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="rounded-full text-muted-foreground hover:text-destructive"
+                  onClick={() => handleDeleteCustomCharacter(selectedCharacter.id)}
+                  title="Delete character"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              )}
               <Button
                 size="lg"
                 className={cn(
@@ -495,6 +678,13 @@ export default function CharacterSelector({
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Create Character Modal */}
+      <CreateCharacterModal
+        open={createModalOpen}
+        onOpenChange={setCreateModalOpen}
+        onCharacterCreated={handleCharacterCreated}
+      />
     </div>
   )
 }

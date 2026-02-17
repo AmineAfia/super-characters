@@ -278,12 +278,21 @@ export default function Home() {
                       boxShadow: `0 0 12px ${selectedCharacter.color}40, 0 0 24px ${selectedCharacter.color}20`,
                     }}
                   >
-                    <img 
-                      src={selectedCharacter.thumbnailUrl}
-                      alt={selectedCharacter.name}
-                      className="w-full h-full object-cover"
-                      crossOrigin="anonymous"
-                    />
+                    {selectedCharacter.thumbnailUrl ? (
+                      <img
+                        src={selectedCharacter.thumbnailUrl}
+                        alt={selectedCharacter.name}
+                        className="w-full h-full object-cover"
+                        crossOrigin="anonymous"
+                      />
+                    ) : (
+                      <div
+                        className="w-full h-full flex items-center justify-center text-white font-bold text-lg"
+                        style={{ backgroundColor: selectedCharacter.color }}
+                      >
+                        {selectedCharacter.name.charAt(0)}
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="h-11 w-11 rounded-2xl shadow-glass overflow-hidden bg-card">
@@ -379,7 +388,12 @@ export default function Home() {
         )}
         <AvatarCanvas
           ref={avatarRef}
-          avatarUrl={selectedCharacter?.avatarUrl}
+          avatarUrl={
+            // Custom characters without a proper 3D model use the default avatar
+            selectedCharacter?.isCustom && (!selectedCharacter.avatarUrl || selectedCharacter.avatarUrl === "")
+              ? undefined // Falls back to DEFAULT_AVATAR_URL in AvatarCanvas
+              : selectedCharacter?.avatarUrl
+          }
           onLoaded={() => setIsAvatarLoading(false)}
           onError={(err) => { setIsAvatarLoading(false); setAvatarError(err); }}
         />

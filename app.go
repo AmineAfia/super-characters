@@ -1,18 +1,24 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"fmt"
 	"log/slog"
+	"os"
+	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
 	"super-characters/audio"
+	"super-characters/characters"
 	"super-characters/elevenlabs"
 	"super-characters/gemini"
 	"super-characters/hotkey"
 	"super-characters/permissions"
+	"super-characters/pipeline"
 	"super-characters/pipedream"
 	"super-characters/settings"
 	"super-characters/transcription"
@@ -48,6 +54,10 @@ type App struct {
 	elevenlabsService *elevenlabs.ElevenLabsService
 	settingsService   *settings.SettingsService
 	pipedreamService  *pipedream.Service
+
+	// Custom character services
+	characterService *characters.Service
+	pipelineService  *pipeline.Service
 
 	// Recording state
 	isTranscribing bool
@@ -87,6 +97,24 @@ func NewApp() *App {
 	vadCfg := vad.DefaultConfig()
 	vadCfg.SilenceDuration = silenceDuration
 
+	// Initialize custom character service
+	charSvc, err := characters.NewService()
+	if err != nil {
+		slog.Warn("failed to initialize character service", "error", err)
+	}
+
+	// Initialize pipeline service (Python ML scripts)
+	// Pipeline scripts are in the "pipeline" directory relative to the executable
+	pipelineDir := "pipeline"
+	if exePath, err := os.Executable(); err == nil {
+		// Try relative to executable for packaged app
+		candidate := filepath.Join(filepath.Dir(exePath), "..", "Resources", "pipeline")
+		if _, err := os.Stat(candidate); err == nil {
+			pipelineDir = candidate
+		}
+	}
+	pipelineSvc := pipeline.NewService(pipelineDir)
+
 	return &App{
 		transcriptionService: transcription.NewTranscriptionService(),
 		audioService:         audio.NewAudioService(),
@@ -98,6 +126,8 @@ func NewApp() *App {
 		pipedreamService:     pipedream.NewService(),
 		vadService:           vad.NewVADService(vadCfg),
 		continuousState:      ConversationStateIdle,
+		characterService:     charSvc,
+		pipelineService:      pipelineSvc,
 	}
 }
 
@@ -1270,3 +1300,360 @@ func (a *App) openURLInBrowser(url string) error {
 }
 
 // #endregion Pipedream API
+
+// #region Custom Character API
+
+// CustomCharacterInfo is the frontend-facing representation of a custom character.
+type CustomCharacterInfo struct {
+	ID           string `json:"id"`
+	Name         string `json:"name"`
+	Subtitle     string `json:"subtitle"`
+	Voice        string `json:"voice"`
+	Model        string `json:"model"`
+	Description  string `json:"description"`
+	Color        string `json:"color"`
+	SystemPrompt string `json:"systemPrompt"`
+	AvatarUrl    string `json:"avatarUrl"`
+	ThumbnailUrl string `json:"thumbnailUrl"`
+	Status       string `json:"status"`
+	Error        string `json:"error,omitempty"`
+	IsCustom     bool   `json:"isCustom"`
+}
+
+// CreateCustomCharacter creates a new custom character with the given metadata.
+// The image should be provided as a base64-encoded string.
+func (a *App) CreateCustomCharacter(
+	name, subtitle, voice, model, description, color, systemPrompt string,
+	imageBase64 string, imageFilename string,
+) (*CustomCharacterInfo, error) {
+	if a.characterService == nil {
+		return nil, fmt.Errorf("character service not available")
+	}
+
+	// Generate a unique ID from the name
+	id := generateCharacterID(name)
+
+	char := &characters.CustomCharacter{
+		ID:           id,
+		Name:         name,
+		Subtitle:     subtitle,
+		Voice:        voice,
+		Model:        model,
+		Description:  description,
+		Color:        color,
+		SystemPrompt: systemPrompt,
+	}
+
+	// If no image provided, create a basic character (uses default avatar)
+	if imageBase64 == "" {
+		char.Status = characters.StatusBasic
+		if err := a.characterService.Create(char); err != nil {
+			return nil, fmt.Errorf("failed to create character: %w", err)
+		}
+		return a.characterToInfo(char), nil
+	}
+
+	// Decode and save the image
+	char.Status = characters.StatusUploaded
+	if err := a.characterService.Create(char); err != nil {
+		return nil, fmt.Errorf("failed to create character: %w", err)
+	}
+
+	// Decode base64 image
+	imageData, err := base64.StdEncoding.DecodeString(imageBase64)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode image: %w", err)
+	}
+
+	// Save the image
+	ext := filepath.Ext(imageFilename)
+	if ext == "" {
+		ext = ".png"
+	}
+	_, err = a.characterService.SaveImage(id, "original"+ext, bytes.NewReader(imageData))
+	if err != nil {
+		return nil, fmt.Errorf("failed to save image: %w", err)
+	}
+
+	// Also save as thumbnail
+	thumbnailPath := filepath.Join(a.characterService.GetDataDir(), id, "thumbnail"+ext)
+	if err := os.WriteFile(thumbnailPath, imageData, 0644); err != nil {
+		slog.Warn("[Character] Failed to save thumbnail", "error", err)
+	} else {
+		a.characterService.SetThumbnail(id, "thumbnail"+ext)
+	}
+
+	// Emit event to notify frontend
+	if a.app != nil {
+		a.app.Event.Emit("character:created", map[string]interface{}{
+			"id":   id,
+			"name": name,
+		})
+	}
+
+	// Refresh the character from storage
+	updated, _ := a.characterService.Get(id)
+	if updated != nil {
+		char = updated
+	}
+
+	return a.characterToInfo(char), nil
+}
+
+// ListCustomCharacters returns all custom characters.
+func (a *App) ListCustomCharacters() []*CustomCharacterInfo {
+	if a.characterService == nil {
+		return nil
+	}
+
+	chars := a.characterService.List()
+	infos := make([]*CustomCharacterInfo, len(chars))
+	for i, c := range chars {
+		infos[i] = a.characterToInfo(c)
+	}
+	return infos
+}
+
+// GetCustomCharacter returns a specific custom character by ID.
+func (a *App) GetCustomCharacter(id string) (*CustomCharacterInfo, error) {
+	if a.characterService == nil {
+		return nil, fmt.Errorf("character service not available")
+	}
+
+	char, err := a.characterService.Get(id)
+	if err != nil {
+		return nil, err
+	}
+	return a.characterToInfo(char), nil
+}
+
+// UpdateCustomCharacter updates a custom character's metadata.
+func (a *App) UpdateCustomCharacter(
+	id, name, subtitle, voice, model, description, color, systemPrompt string,
+) error {
+	if a.characterService == nil {
+		return fmt.Errorf("character service not available")
+	}
+
+	char, err := a.characterService.Get(id)
+	if err != nil {
+		return err
+	}
+
+	char.Name = name
+	char.Subtitle = subtitle
+	char.Voice = voice
+	char.Model = model
+	char.Description = description
+	char.Color = color
+	char.SystemPrompt = systemPrompt
+
+	return a.characterService.Update(char)
+}
+
+// DeleteCustomCharacter removes a custom character.
+func (a *App) DeleteCustomCharacter(id string) error {
+	if a.characterService == nil {
+		return fmt.Errorf("character service not available")
+	}
+
+	err := a.characterService.Delete(id)
+	if err != nil {
+		return err
+	}
+
+	// Emit event to notify frontend
+	if a.app != nil {
+		a.app.Event.Emit("character:deleted", map[string]interface{}{
+			"id": id,
+		})
+	}
+
+	return nil
+}
+
+// GetCharacterImageBase64 returns a character's image as base64-encoded data.
+// imageType can be "original", "thumbnail", or "nanoBanana".
+func (a *App) GetCharacterImageBase64(id, imageType string) (string, error) {
+	if a.characterService == nil {
+		return "", fmt.Errorf("character service not available")
+	}
+
+	char, err := a.characterService.Get(id)
+	if err != nil {
+		return "", err
+	}
+
+	var filename string
+	switch imageType {
+	case "original":
+		filename = char.OriginalImage
+	case "thumbnail":
+		filename = char.Thumbnail
+	case "nanoBanana":
+		filename = char.NanoBanana
+	default:
+		return "", fmt.Errorf("unknown image type: %s", imageType)
+	}
+
+	if filename == "" {
+		return "", fmt.Errorf("no %s image available", imageType)
+	}
+
+	path := a.characterService.GetImagePath(id, filename)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", fmt.Errorf("failed to read image: %w", err)
+	}
+
+	return base64.StdEncoding.EncodeToString(data), nil
+}
+
+// GetCharacterModelPath returns the path to a character's GLB model file.
+// Used by the frontend to load the 3D model.
+func (a *App) GetCharacterModelPath(id string) string {
+	if a.characterService == nil {
+		return ""
+	}
+	return a.characterService.GetModelPath(id)
+}
+
+// RunCharacterPipeline starts the ML pipeline for a character.
+// This runs the Nano Banana generation and 3D conversion in the background.
+func (a *App) RunCharacterPipeline(id string) error {
+	if a.characterService == nil {
+		return fmt.Errorf("character service not available")
+	}
+	if a.pipelineService == nil {
+		return fmt.Errorf("pipeline service not available")
+	}
+
+	char, err := a.characterService.Get(id)
+	if err != nil {
+		return err
+	}
+
+	if char.OriginalImage == "" {
+		return fmt.Errorf("no source image available for character %s", id)
+	}
+
+	// Run pipeline in background
+	go func() {
+		charDir := filepath.Join(a.characterService.GetDataDir(), id)
+		inputImage := a.characterService.GetImagePath(id, char.OriginalImage)
+
+		// Update status
+		a.characterService.SetPipelineStatus(id, characters.StatusGenerating, "")
+		a.emitCharacterProgress(id, "generating", "Generating styled image...")
+
+		// Run the full pipeline
+		nanoBananaPath, modelPath, err := a.pipelineService.RunFullPipeline(
+			inputImage, charDir,
+			func(step, message string) {
+				a.emitCharacterProgress(id, step, message)
+			},
+		)
+
+		if err != nil {
+			slog.Error("[Character] Pipeline failed", "id", id, "error", err)
+			a.characterService.SetPipelineStatus(id, characters.StatusFailed, err.Error())
+			a.emitCharacterProgress(id, "failed", err.Error())
+			return
+		}
+
+		// Update character with generated files
+		if nanoBananaPath != "" {
+			a.characterService.SetNanoBananaImage(id, filepath.Base(nanoBananaPath))
+		}
+		if modelPath != "" {
+			a.characterService.SetModelFile(id, filepath.Base(modelPath))
+		}
+
+		a.characterService.SetPipelineStatus(id, characters.StatusReady, "")
+		a.emitCharacterProgress(id, "ready", "Character is ready!")
+
+		slog.Info("[Character] Pipeline complete", "id", id)
+	}()
+
+	return nil
+}
+
+// IsPipelineAvailable returns whether the Python ML pipeline is available.
+func (a *App) IsPipelineAvailable() bool {
+	return a.pipelineService != nil && a.pipelineService.IsPythonAvailable()
+}
+
+// emitCharacterProgress sends a pipeline progress event to the frontend.
+func (a *App) emitCharacterProgress(id, step, message string) {
+	if a.app != nil {
+		a.app.Event.Emit("character:pipeline-progress", map[string]interface{}{
+			"id":      id,
+			"step":    step,
+			"message": message,
+		})
+	}
+}
+
+// characterToInfo converts a storage character to a frontend-facing info struct.
+func (a *App) characterToInfo(char *characters.CustomCharacter) *CustomCharacterInfo {
+	info := &CustomCharacterInfo{
+		ID:           char.ID,
+		Name:         char.Name,
+		Subtitle:     char.Subtitle,
+		Voice:        char.Voice,
+		Model:        char.Model,
+		Description:  char.Description,
+		Color:        char.Color,
+		SystemPrompt: char.SystemPrompt,
+		Status:       string(char.Status),
+		Error:        char.Error,
+		IsCustom:     true,
+	}
+
+	// Determine avatar URL: use GLB if available, else empty (frontend uses default)
+	if char.ModelGLB != "" {
+		modelPath := a.characterService.GetModelPath(char.ID)
+		info.AvatarUrl = "file://" + modelPath
+	}
+
+	// Determine thumbnail URL: encode as data URL if available
+	if char.Thumbnail != "" {
+		thumbPath := a.characterService.GetImagePath(char.ID, char.Thumbnail)
+		if data, err := os.ReadFile(thumbPath); err == nil {
+			ext := filepath.Ext(char.Thumbnail)
+			mimeType := "image/png"
+			if ext == ".jpg" || ext == ".jpeg" {
+				mimeType = "image/jpeg"
+			}
+			info.ThumbnailUrl = "data:" + mimeType + ";base64," + base64.StdEncoding.EncodeToString(data)
+		}
+	}
+
+	return info
+}
+
+// generateCharacterID creates a URL-safe ID from a character name.
+func generateCharacterID(name string) string {
+	// Convert to lowercase and replace spaces with hyphens
+	id := strings.ToLower(strings.TrimSpace(name))
+	id = strings.ReplaceAll(id, " ", "-")
+
+	// Remove non-alphanumeric characters (except hyphens)
+	var clean strings.Builder
+	for _, r := range id {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '-' {
+			clean.WriteRune(r)
+		}
+	}
+	id = clean.String()
+
+	if id == "" {
+		id = "custom"
+	}
+
+	// Add timestamp suffix for uniqueness
+	id = fmt.Sprintf("%s-%d", id, time.Now().UnixMilli()%100000)
+	return id
+}
+
+// #endregion Custom Character API

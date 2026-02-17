@@ -1,7 +1,7 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-import { Mic, Brain, Sparkles } from "lucide-react"
+import { Mic, Brain, Sparkles, User } from "lucide-react"
 
 export interface Character {
   id: string
@@ -14,6 +14,9 @@ export interface Character {
   description: string
   color: string
   systemPrompt: string
+  isCustom?: boolean
+  status?: string // Pipeline status for custom characters
+  error?: string
 }
 
 interface CharacterCardProps {
@@ -131,11 +134,19 @@ export default function CharacterCard({
         {/* Selection sparkle indicator */}
         {isSelected && (
           <div className="absolute top-3 right-3">
-            <div 
+            <div
               className="p-1.5 rounded-full backdrop-blur-sm"
               style={{ backgroundColor: `${character.color}30` }}
             >
               <Sparkles className="w-3.5 h-3.5 animate-pulse" style={{ color: character.color }} />
+            </div>
+          </div>
+        )}
+        {/* Custom character badge */}
+        {character.isCustom && !isSelected && (
+          <div className="absolute top-3 right-3">
+            <div className="p-1 rounded-full bg-muted/60 backdrop-blur-sm">
+              <User className="w-3 h-3 text-muted-foreground" />
             </div>
           </div>
         )}
